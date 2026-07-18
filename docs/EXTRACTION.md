@@ -7,7 +7,7 @@ CocoaPods 없는 환경(SPM `binaryTarget`, Tuist xcframework 의존성)에서 �
 
 `./build.sh` 하나가 전 과정을 자동화한다:
 
-1. **아카이브 ×2** — `Lynx-MiniApp.xcworkspace`의 `Lynx-MiniApp` scheme을
+1. **아카이브 ×2** — `Lynx-XcFramework.xcworkspace`의 `Lynx-XcFramework` scheme을
    `generic/platform=iOS`와 `generic/platform=iOS Simulator` 두 destination으로 아카이브한다.
    - `SKIP_INSTALL=NO` + `BUILD_LIBRARY_FOR_DISTRIBUTION=YES` + `ONLY_ACTIVE_ARCH=NO`
    - 서명 비활성 (`CODE_SIGNING_ALLOWED=NO`) — 프레임워크만 뽑을 것이므로 아카이브 서명은 생략
@@ -40,18 +40,18 @@ PrimJS.xcframework
 SDWebImage.xcframework
 SDWebImageWebPCoder.xcframework   ← libwebp 링크
 libwebp.xcframework
-Lynx_MiniApp.xcframework          ← 이 프로젝트 자체 타깃 산출물 — 배포 대상 아님
+Lynx_XcFramework.xcframework          ← 이 프로젝트 자체 타깃 산출물 — 배포 대상 아님
 ```
 
-`Lynx_MiniApp`은 추출 앵커인 `Lynx-MiniApp` framework 타깃의 산출물이다. 이 타깃의 소스
-(`Lynx-MiniApp/LynxExtensions/` — TemplateProvider, NativeLocalStorageModule, Auth/Config/
-LifeCycle/Permission 모듈)는 Lynx 확장 구현의 샘플이며 소비 측에서는 자체 구현을 쓴다.
+`Lynx_XcFramework`은 추출 앵커인 `Lynx-XcFramework` framework 타깃의 산출물이다. 이 타깃의
+소스는 `Lynx-XcFramework/Anchor.swift` 하나뿐이다 — 아카이브 시 모든 pod가 함께 빌드되게
+하는 앵커 역할만 하며, 소스가 하나도 없으면 프레임워크 링크가 실패할 수 있어 유지한다.
 
 ## 3. SPM 배포 (GitHub Release + binaryTarget)
 
 저장소 루트의 `Package.swift`가 이 저장소를 SPM 패키지로 만든다:
 
-- 8개 xcframework를 `.binaryTarget(name:url:checksum:)`으로 선언 (`Lynx_MiniApp` 제외).
+- 8개 xcframework를 `.binaryTarget(name:url:checksum:)`으로 선언 (`Lynx_XcFramework` 제외).
   url은 GitHub Release 자산(`releases/download/<버전>/<F>.xcframework.zip`)을 가리킨다.
 - `Lynx` 라이브러리 제품 하나가 8개 타깃을 전부 포함 — 바이너리 간 전이 링크가 자동으로
   걸리지 않으므로, 제품 하나로 묶어 소비 측이 항상 전체를 링크/임베드하게 한다.

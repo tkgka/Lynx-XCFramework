@@ -8,8 +8,8 @@ Lynx-Xcframework — [Lynx](https://lynxjs.org) iOS SDK를 **XCFramework로 추�
 Lynx는 CocoaPods로만 배포되므로, pod 산출물을 아카이브해 XCFramework로 재패키징하고
 SPM `binaryTarget` / Tuist xcframework 의존성으로 소비할 수 있게 만드는 것이 이 저장소의 유일한 목적이다.
 
-- 앱 프로젝트가 아니다. `Lynx-MiniApp` 타깃은 **framework** 타깃이며, 아카이브 시 모든 pod가 함께 빌드되게 하는 앵커 역할이다.
-- 저장소 루트가 곧 SPM 패키지다: `Package.swift`가 8개 바이너리(`Lynx_MiniApp` 제외)를
+- 앱 프로젝트가 아니다. `Lynx-XcFramework` 타깃은 **framework** 타깃이며, 아카이브 시 모든 pod가 함께 빌드되게 하는 앵커 역할이다.
+- 저장소 루트가 곧 SPM 패키지다: `Package.swift`가 8개 바이너리(`Lynx_XcFramework` 제외)를
   `binaryTarget`으로 선언하고 `Lynx` 라이브러리 제품 하나로 묶어 노출한다.
 - 바이너리는 저장소에 커밋하지 않고 **GitHub Release 자산**으로 배포한다. 릴리스는
   `.github/workflows/`의 두 워크플로가 만든다 (아래 Distribution 참고).
@@ -59,9 +59,8 @@ Podfile (버전 고정)
   → Results/*.xcframework             # 9개
 ```
 
-추출되는 9개 중 **소비 측이 필요로 하는 것은 8개**다. `Lynx_MiniApp.xcframework`는 이 프로젝트
-자체 타깃(`Lynx-MiniApp/LynxExtensions/` — TemplateProvider, NativeLocalStorage 모듈 등 확장 샘플)의
-산출물로, 소비 측에는 배치하지 않는다.
+추출되는 9개 중 **소비 측이 필요로 하는 것은 8개**다. `Lynx_XcFramework.xcframework`는 이 프로젝트
+자체 앵커 타깃의 산출물로(소스는 `Lynx-XcFramework/Anchor.swift` 하나), 소비 측에는 배치하지 않는다.
 
 바이너리 링크 그래프 (otool -L 기준, 화살표 = "링크한다"):
 

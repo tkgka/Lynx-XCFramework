@@ -2,7 +2,7 @@
 //
 // Lynx XCFramework SPM 패키지.
 // build.sh가 Results/에 추출한 바이너리를 binaryTarget으로 노출한다.
-// Lynx_MiniApp.xcframework(추출 앵커 타깃 자체 산출물)는 배포 대상이 아니다.
+// Lynx_XcFramework.xcframework(추출 앵커 타깃 자체 산출물)는 배포 대상이 아니다.
 import PackageDescription
 
 let frameworks = [

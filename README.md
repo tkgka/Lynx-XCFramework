@@ -52,5 +52,5 @@ pod install    # 최초 1회
 - `build.sh` — 아카이브 → create-xcframework → codesign 자동화
 - `scripts/` — 버전 조회 / Podfile 갱신 / zip·checksum·매니페스트 생성
 - `.github/workflows/` — 버전 업 PR(수동) · 빌드/릴리스(머지 시 자동)
-- `Lynx-MiniApp/LynxExtensions/` — 추출 앵커 타깃의 Lynx 확장 샘플 (배포 대상 아님)
+- `Lynx-XcFramework/` — 추출 앵커 타깃 소스 (Anchor.swift 하나 — 산출물은 배포 대상 아님)
 - `Results/`, `dist/` — 추출/패키징 산출물 (git-ignored)

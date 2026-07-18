@@ -1,6 +1,6 @@
 platform :ios, '12.0'
 
-target 'Lynx-MiniApp' do
+target 'Lynx-XcFramework' do
   # Comment the next line if you don't want to use dynamic frameworks
   use_frameworks!
 

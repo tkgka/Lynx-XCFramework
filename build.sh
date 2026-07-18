@@ -17,14 +17,14 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-WORKSPACE="Lynx-MiniApp.xcworkspace"
-SCHEME="Lynx-MiniApp"
+WORKSPACE="Lynx-XcFramework.xcworkspace"
+SCHEME="Lynx-XcFramework"
 CONFIGURATION="Release"
 OUTPUT_DIR="./Results"
 BUILD_DIR="./build"
 
 # 추출 대상. 앞의 8개가 LynxMiniFramework가 링크하는 프레임워크이고,
-# Lynx_MiniApp은 이 추출용 프로젝트 자체의 샘플 코드다 (소비 측에서는 불필요).
+# Lynx_XcFramework은 이 추출용 프로젝트 자체의 샘플 코드다 (소비 측에서는 불필요).
 FRAMEWORKS=(
   Lynx
   LynxBase
@@ -34,7 +34,7 @@ FRAMEWORKS=(
   SDWebImage
   SDWebImageWebPCoder
   libwebp
-  Lynx_MiniApp
+  Lynx_XcFramework
 )
 
 PLATFORMS="${PLATFORMS:-both}"      # both | device | sim

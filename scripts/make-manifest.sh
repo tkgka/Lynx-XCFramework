@@ -13,7 +13,7 @@ VERSION="$1"
 REPO="$2"
 BASE_URL="https://github.com/${REPO}/releases/download/${VERSION}"
 
-# Lynx_MiniApp(추출 앵커 타깃 산출물)은 배포 대상이 아니다
+# Lynx_XcFramework(추출 앵커 타깃 산출물)은 배포 대상이 아니다
 FRAMEWORKS=(
   Lynx
   LynxBase
