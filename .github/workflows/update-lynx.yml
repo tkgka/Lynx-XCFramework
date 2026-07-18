@@ -7,7 +7,7 @@
 #
 # 수행 내용:
 #   1. Podfile의 Lynx 버전 확인 — 같은 버전 릴리스가 이미 있으면 종료
-#   2. pod install → build.sh (device + simulator XCFramework 추출)
+#   2. pod update → build.sh (device + simulator XCFramework 추출)
 #   3. xcframework zip + checksum → Package.swift 재생성 (url:checksum: 기반)
 #   4. Podfile.lock/Package.swift 커밋 → 버전 태그로 GitHub Release 생성 + zip 업로드
 #
@@ -53,9 +53,13 @@ jobs:
             echo "SKIP=1" >> "$GITHUB_ENV"
           fi
 
-      - name: pod install
+      # pod install은 Podfile.lock에 잠긴 버전을 요구사항으로 합류시키므로, Lynx 버전이
+      # 바뀌면 이전 lock의 PrimJS 등과 충돌한다 ("required a higher minimum deployment
+      # target" 오류로 표면화). pod update는 lock을 무시하고 Podfile+podspec 제약만으로
+      # 재해석한다.
+      - name: pod update
         if: env.SKIP != '1'
-        run: pod install --repo-update
+        run: pod update
 
       # SIGNING_CERTIFICATE_P12(base64 .p12) / P12_PASSWORD / KEYCHAIN_PASSWORD secret 필요.
       # 임시 키체인에 인증서를 설치해 build.sh의 codesign(TFLQDNW4Z9)이 동작하게 한다.

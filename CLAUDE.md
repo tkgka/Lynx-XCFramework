@@ -38,7 +38,7 @@ swift package dump-package > /dev/null && echo OK
 
 # 배포 스크립트 (CI가 사용, 로컬 실행도 가능)
 scripts/latest-pod-version.sh Lynx          # CocoaPods trunk 최신 정식 버전 조회
-scripts/set-lynx-version.sh 3.9.0           # Podfile의 Lynx 버전 갱신 (나머지는 pod install이 해석)
+scripts/set-lynx-version.sh 3.9.0           # Podfile의 Lynx 버전 갱신 (나머지는 pod update가 해석)
 scripts/make-manifest.sh 3.9.0 <owner/repo> # Results/ → dist/*.zip + url:checksum: Package.swift 생성
 ```
 
@@ -72,9 +72,11 @@ SDWebImageWebPCoder → libwebp
 ```
 
 `Podfile`은 **Lynx 버전만 고정**한다 (iOS 12.0). PrimJS / LynxService / SDWebImage 등 나머지
-pod의 버전은 podspec 의존성 제약을 `pod install`이 해석해 `Podfile.lock`에 기록한다
+pod의 버전은 podspec 의존성 제약을 `pod update`가 해석해 `Podfile.lock`에 기록한다
 (예: Lynx 3.6.0 → PrimJS/quickjs 3.6.1, Lynx 3.9.0 → PrimJS/quickjs 3.8.0-alpha.6 — 정확 고정이라
-손으로 버전을 맞추면 안 된다). Podfile의 `post_install`은 pod 소스별 `-Werror`를 제거한다 —
+손으로 버전을 맞추면 안 된다). 버전 변경 후에는 `pod install`이 아니라 `pod update`를 쓴다 —
+install은 이전 `Podfile.lock`에 잠긴 버전을 요구사항으로 합류시켜 충돌한다.
+Podfile의 `post_install`은 pod 소스별 `-Werror`를 제거한다 —
 새 Xcode의 clang이 경고를 추가할 때마다 빌드가 깨지는 것을 막는다 (예: Xcode 26.5의
 `-Wnontrivial-memcall`).
 
@@ -87,7 +89,7 @@ pod의 버전은 podspec 의존성 제약을 `pod install`이 해석해 `Podfile
   프레임워크 추출이 목적이므로 아카이브 서명은 불필요하다.
 - Lynx는 C++ 기반이라 module stability가 완전하지 않다. `BUILD_LIBRARY_FOR_DISTRIBUTION`이
   실패하면 옵션을 빼고 Xcode 버전을 고정해 빌드한다 (소비 측 Xcode 버전 일치 필요).
-- 새 pod 버전으로 올릴 때: `Podfile` 버전 수정 → `pod install` → `./build.sh` → 슬라이스 확인
+- 새 pod 버전으로 올릴 때: `Podfile` 버전 수정 → `pod update` → `./build.sh` → 슬라이스 확인
   → 소비 측에 복사 후 빌드 검증 (`docs/EXTRACTION.md`의 체크리스트).
 - 바이너리·중간 산출물(`Results/`, `dist/`, `Pods/`, `build/`, `.build/`)은 전부 git-ignored다.
   배포는 GitHub Release zip으로만 한다.
@@ -107,13 +109,13 @@ pod의 버전은 podspec 의존성 제약을 `pod install`이 해석해 `Podfile
   저장소 설정 필요: Settings → Actions → General →
   **"Allow GitHub Actions to create and approve pull requests"** 활성화.
 - `update-lynx.yml` (**Build & Release XCFramework** — main에 Podfile 변경이 push되면 실행,
-  버전 업 PR 머지 포함): Podfile에 고정된 버전으로 `pod install` → `build.sh` → zip/checksum →
+  버전 업 PR 머지 포함): Podfile에 고정된 버전으로 `pod update` → `build.sh` → zip/checksum →
   `Package.swift` 재생성 → `Podfile.lock`/`Package.swift` 커밋 → 버전 태그로 GitHub Release
   생성 + zip 업로드. 같은 버전 릴리스가 이미 있으면 건너뛴다. 실패 시 `build/*.log`가
   artifact(`build-logs`)로 남는다. xcframework 서명은 secrets(`SIGNING_CERTIFICATE_P12`,
   `P12_PASSWORD`, `KEYCHAIN_PASSWORD`)의 인증서를 임시 키체인에 설치해 수행하며, secret이
   없으면 서명 없이 빌드한다 (`docs/EXTRACTION.md` §4).
-- 릴리스 태그 = Lynx 버전 (예: `3.9.0`). 나머지 pod 버전은 `pod install`이 podspec 제약으로
+- 릴리스 태그 = Lynx 버전 (예: `3.9.0`). 나머지 pod 버전은 `pod update`가 podspec 제약으로
   해석하며, 릴리스 노트에 `Podfile.lock` 기준 전체 버전 목록이 기록된다.
 - 봇이 GITHUB_TOKEN으로 푸시하는 매니페스트 커밋은 워크플로를 재트리거하지 않는다 (루프 없음).
 - 저장소를 GitHub에 처음 push하면 diff가 없는 push로 간주되어 Build & Release가 1회 실행되고,

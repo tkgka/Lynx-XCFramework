@@ -75,7 +75,7 @@ jobs:
             echo "Podfile의 Lynx 버전 고정 갱신: \`${{ steps.version.outputs.current }}\` → \`${VERSION}\`"
             echo
             echo "나머지 pod(PrimJS / LynxService / SDWebImage 등)의 버전은 머지 후 빌드 워크플로의"
-            echo "\`pod install\`이 podspec 의존성 제약대로 해석해 \`Podfile.lock\`에 기록합니다."
+            echo "\`pod update\`가 podspec 의존성 제약대로 해석해 \`Podfile.lock\`에 기록합니다."
             echo "(예: Lynx 3.9.0 → PrimJS/quickjs \`3.8.0-alpha.6\` 정확 고정)"
             echo
             echo "머지되면 **Build & Release XCFramework** 워크플로가 XCFramework를 빌드해 릴리스 \`${VERSION}\`을 생성합니다."

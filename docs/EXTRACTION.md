@@ -91,7 +91,7 @@ Actions 탭에서 버전을 입력해 실행한다 (비우면 CocoaPods trunk �
 2. 같은 버전의 열린 PR(`bump-lynx-<버전>` 브랜치)이 있으면 종료.
 3. `scripts/set-lynx-version.sh`로 Podfile의 **Lynx 버전만** 갱신 후 PR 생성.
    PrimJS / LynxService / SDWebImage 등 나머지 pod의 버전은 손으로 정하지 않는다 —
-   머지 후 빌드 워크플로의 `pod install`이 podspec 의존성 제약을 해석해 결정하고
+   머지 후 빌드 워크플로의 `pod update`가 podspec 의존성 제약을 해석해 결정하고
    `Podfile.lock`에 기록한다 (예: Lynx 3.9.0 → PrimJS/quickjs `3.8.0-alpha.6` 정확 고정,
    LynxService/Image → SDWebImage `5.15.5`).
 
@@ -105,7 +105,9 @@ main에 `Podfile` 변경이 push되면 실행된다 (버전 업 PR 머지 포함
 
 1. Podfile에서 Lynx 버전을 읽는다. 같은 버전의 릴리스가 이미 있으면 종료 (멱등).
 2. 임시 키체인에 서명 인증서를 설치한다 (아래 Secrets). secret이 없으면 서명 없이 진행.
-3. `pod install --repo-update` → `./build.sh` (xcframework에 `TFLQDNW4Z9`로 codesign)
+3. `pod update` → `./build.sh` (xcframework에 `TFLQDNW4Z9`로 codesign).
+   `pod install`이 아니라 `pod update`인 이유: install은 Podfile.lock에 잠긴 버전을
+   요구사항에 합류시켜, Lynx 버전이 바뀌면 이전 lock의 PrimJS 버전과 충돌한다.
 4. `scripts/make-manifest.sh` — `dist/*.zip` 생성 + checksum 계산 + `Package.swift` 재생성
 5. `Podfile.lock`/`Package.swift` 커밋·푸시
 6. 버전 태그로 GitHub Release 생성, zip 8개 업로드
@@ -152,3 +154,7 @@ scripts/make-manifest.sh 3.9.0 <owner/repo>   # dist/ zip + Package.swift 생성
 - **소비 측 checksum 불일치**: 릴리스 자산과 `Package.swift`가 다른 실행에서 나온 경우다.
   해당 버전 릴리스를 지우고 `update-lynx.yml`을 재실행해 자산과 매니페스트를 같은 실행에서
   다시 만든다.
+- **`Specs satisfying the … dependency were found, but they required a higher minimum
+  deployment target`** (버전 업 후 pod install 시): 실제 배포 타깃 문제가 아니라, 이전
+  `Podfile.lock`에 잠긴 버전(예: PrimJS 3.6.1)과 새 Lynx podspec의 요구(예: PrimJS
+  3.8.0-alpha.6)가 충돌한 것이다. `pod install` 대신 `pod update`를 실행한다.
