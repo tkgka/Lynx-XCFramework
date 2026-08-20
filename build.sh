@@ -23,8 +23,12 @@ CONFIGURATION="Release"
 OUTPUT_DIR="./Results"
 BUILD_DIR="./build"
 
-# 추출 대상. 앞의 8개가 LynxMiniFramework가 링크하는 프레임워크이고,
-# Lynx_XcFramework은 이 추출용 프로젝트 자체의 샘플 코드다 (소비 측에서는 불필요).
+# 추출 대상 — 소비 측이 링크하는 8개. scripts/make-manifest.sh의 FRAMEWORKS와 같아야 한다.
+#
+# 앵커 타깃 산출물(Lynx_XcFramework)은 여기 넣지 않는다. 배포 대상이 아닐 뿐 아니라
+# (make-manifest.sh / Package.swift 모두 제외), MACH_O_TYPE=staticlib이라 LTO를 켜면
+# 바이너리가 Mach-O가 아닌 LLVM 비트코드(0xb17c0de)로 남아 create-xcframework가 실패한다.
+# 앵커의 역할은 아카이브 때 모든 pod를 함께 빌드시키는 것뿐이고, 그건 -scheme으로 이미 수행된다.
 FRAMEWORKS=(
   Lynx
   LynxBase
@@ -34,7 +38,6 @@ FRAMEWORKS=(
   SDWebImage
   SDWebImageWebPCoder
   libwebp
-  Lynx_XcFramework
 )
 
 PLATFORMS="${PLATFORMS:-both}"      # both | device | sim
