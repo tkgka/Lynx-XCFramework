@@ -54,13 +54,20 @@ Podfile (버전 고정)
   → pod install                       # Pods/ 생성
   → xcodebuild archive ×2             # generic/platform=iOS, iOS Simulator
                                       # BUILD_LIBRARY_FOR_DISTRIBUTION=YES, 서명 없음
+                                      # 크기 최적화(-Oz / -Osize / thin LTO / strip) 적용
   → xcrun xcodebuild -create-xcframework   # 프레임워크별 device+sim 슬라이스 병합
   → codesign (완성된 xcframework에만)
-  → Results/*.xcframework             # 9개
+  → Results/*.xcframework             # 8개
 ```
 
-추출되는 9개 중 **소비 측이 필요로 하는 것은 8개**다. `Lynx_XcFramework.xcframework`는 이 프로젝트
-자체 앵커 타깃의 산출물로(소스는 `Lynx-XcFramework/Anchor.swift` 하나), 소비 측에는 배치하지 않는다.
+앵커 타깃 `Lynx-XcFramework`(소스는 `Lynx-XcFramework/Anchor.swift` 하나)은 아카이브에서 모든 pod가
+함께 빌드되게 하는 역할만 하고, 그 산출물은 xcframework로 만들지 않는다 — 소비 측에 불필요하고
+`MACH_O_TYPE=staticlib`이라 LTO 하에서는 `create-xcframework`가 실패한다.
+
+**크기 최적화**: 아카이브 시 `-Oz`(`GCC_OPTIMIZATION_LEVEL=z`), Swift `-Osize` + wholemodule,
+thin LTO, dead code stripping, 심볼 스트립(`STRIP_STYLE=non-global`)을 xcodebuild CLI 인자로 넘겨
+모든 pod 타깃에 강제 적용한다. `STRIP_STYLE`을 `all`로 올리거나
+`GCC_SYMBOLS_PRIVATE_EXTERN`(Symbols Hidden by Default)을 켜면 프레임워크 간 심볼 링크가 깨진다.
 
 바이너리 링크 그래프 (otool -L 기준, 화살표 = "링크한다"):
 
