@@ -57,6 +57,18 @@ archive() {
     return
   fi
   echo "▶︎ archive: ${destination}"
+  # 크기 최적화 설정 — CLI로 넘겨 모든 pod 타깃에 강제 적용한다.
+  #   GCC_OPTIMIZATION_LEVEL=z          : -Oz. C/C++/ObjC++에서 -Os 대비 코드 크기 추가 감소 (Lynx는 C++ 비중이 크다)
+  #   SWIFT_OPTIMIZATION_LEVEL=-Osize   : Swift 크기 우선 최적화 (+ wholemodule)
+  #   LLVM_LTO=YES_THIN                 : Incremental(Thin) LTO — 링크 시점 크로스 파일 최적화
+  #   DEAD_CODE_STRIPPING=YES           : 미사용 코드 링크 시 제거
+  #   DEPLOYMENT_POSTPROCESSING=YES + STRIP_INSTALLED_PRODUCT=YES + STRIP_STYLE=non-global
+  #                                     : 디버그·로컬 심볼 스트립. non-global이라 export 심볼은 유지된다
+  #                                       (all로 바꾸면 소비 측 링크가 깨진다). dSYM은 스트립 전에
+  #                                       생성되므로 INCLUDE_DSYM=1은 그대로 동작한다.
+  #   GCC_SYMBOLS_PRIVATE_EXTERN(Symbols Hidden by Default)은 넣지 않는다 —
+  #   프레임워크 간 심볼 링크(Lynx→PrimJS, SDWebImageWebPCoder→libwebp)와
+  #   C++ 예외/RTTI가 깨질 수 있다.
   xcodebuild archive \
     -workspace "${WORKSPACE}" \
     -scheme "${SCHEME}" \
@@ -69,6 +81,17 @@ archive() {
     CODE_SIGNING_ALLOWED=NO \
     CODE_SIGNING_REQUIRED=NO \
     CODE_SIGN_IDENTITY="" \
+    GCC_OPTIMIZATION_LEVEL=z \
+    SWIFT_OPTIMIZATION_LEVEL=-Osize \
+    SWIFT_COMPILATION_MODE=wholemodule \
+    LLVM_LTO=YES_THIN \
+    DEAD_CODE_STRIPPING=YES \
+    DEPLOYMENT_POSTPROCESSING=YES \
+    STRIP_INSTALLED_PRODUCT=YES \
+    STRIP_STYLE=non-global \
+    COPY_PHASE_STRIP=YES \
+    DEBUG_INFORMATION_FORMAT=dwarf-with-dsym \
+    ASSETCATALOG_COMPILER_OPTIMIZATION=space \
     > "${archive_path%.xcarchive}.log" \
     || { echo "✗ 아카이브 실패 — 로그: ${archive_path%.xcarchive}.log" >&2; exit 1; }
 }
