@@ -33,6 +33,15 @@ CocoaPods 없는 환경(SPM `binaryTarget`, Tuist xcframework 의존성)에서 �
 5. 마지막에 xcframework별 슬라이스 목록을 출력한다. 정상 산출물은
    `ios-arm64`(실기기) + `ios-arm64_x86_64-simulator` 두 슬라이스를 가진다.
 
+`pod install`/`pod update` 단계에서는 Podfile의 `post_install`이 Lynx 타깃의 `.cc`/`.c`/`.cpp`
+소스에 `-fvisibility=hidden`을 붙이고 `EXPORT_SYMBOLS_FOR_DEVTOOL`을 0으로 내린다.
+Lynx는 원래 hidden 전제로 공개 API에만 `LYNX_EXPORT`를 붙여 놓았는데(80곳) podspec에 그 설정이
+없어서 엔진 내부 C++ 심볼 1만여 개가 그대로 export되고, 그 탓에 `DEAD_CODE_STRIPPING`과 thin LTO가
+무력화된다. `.m`/`.mm`을 제외하는 이유는 ObjC 클래스 심볼까지 hidden 되면 소비 측이 상속하는
+`LynxUI`·`LynxPropsProcessor`·`LynxCustomMeasureShadowNode` 등 8개 클래스의 링크가 깨지기 때문이고,
+Lynx 타깃에만 거는 이유는 Lynx가 LynxBase/PrimJS의 C++ 심볼 375개를 프레임워크 너머로 쓰기 때문이다.
+끄려면 `HIDE_SYMBOLS=0 pod update`.
+
 옵션 (환경변수):
 
 | 변수 | 기본값 | 설명 |

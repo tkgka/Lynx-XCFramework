@@ -52,7 +52,8 @@ scripts/make-manifest.sh 3.9.0 <owner/repo> # Results/ → dist/*.zip + url:chec
 
 ```
 Podfile (버전 고정)
-  → pod install                       # Pods/ 생성
+  → pod install                       # Pods/ 생성 (post_install이 Lynx C/C++ 소스에
+                                      #  -fvisibility=hidden 부착)
   → xcodebuild archive ×2             # generic/platform=iOS, iOS Simulator
                                       # BUILD_LIBRARY_FOR_DISTRIBUTION=YES, 서명 없음
                                       # 크기 최적화(-Oz / -Osize / thin LTO / strip) 적용
@@ -67,9 +68,26 @@ Podfile (버전 고정)
 `MACH_O_TYPE=staticlib`이라 LTO 하에서는 `create-xcframework`가 실패한다.
 
 **크기 최적화**: 아카이브 시 `-Oz`(`GCC_OPTIMIZATION_LEVEL=z`), Swift `-Osize` + wholemodule,
-thin LTO, dead code stripping, 심볼 스트립(`STRIP_STYLE=non-global`)을 xcodebuild CLI 인자로 넘겨
-모든 pod 타깃에 강제 적용한다. `STRIP_STYLE`을 `all`로 올리거나
-`GCC_SYMBOLS_PRIVATE_EXTERN`(Symbols Hidden by Default)을 켜면 프레임워크 간 심볼 링크가 깨진다.
+thin LTO, dead code stripping, `-fvisibility-inlines-hidden`(`CLANG_CXX_INLINES_HIDDEN`),
+심볼 스트립(`STRIP_STYLE=non-global`)을 xcodebuild CLI 인자로 넘겨 모든 pod 타깃에 강제 적용한다.
+`STRIP_STYLE`을 `all`로 올리거나 `GCC_SYMBOLS_PRIVATE_EXTERN`(Symbols Hidden by Default)을
+**모든 타깃에** 켜면 프레임워크 간 심볼 링크와 ObjC 클래스 export가 깨진다 — 대신 Lynx 엔진의
+C/C++ 소스에만 파일 단위로 거는 방식을 쓴다 (아래 **심볼 가시성**).
+
+**심볼 가시성**(`HIDE_SYMBOLS=1`, 기본): Podfile의 `post_install`이 **Lynx 타깃의 `.cc`/`.c`/`.cpp`
+파일에만** `-fvisibility=hidden`을 붙이고, xcconfig의 `EXPORT_SYMBOLS_FOR_DEVTOOL`을 0으로 내린다.
+Lynx 소스(`core/base/lynx_export.h`)는 원래 `-fvisibility=hidden` 전제로 공개 API에만
+`LYNX_EXPORT`를 붙여 두었는데 podspec에 그 설정이 빠져 있어, 4.0.1 arm64 기준 export 심볼
+11,580개 중 10,171개가 엔진 내부 C++ 심볼이다(`LYNX_EXPORT` 주석은 80개뿐). 그래서 `__LINKEDIT`이
+1.84MB로 부풀고 `DEAD_CODE_STRIPPING`/thin LTO도 전부 루트로 잡혀 아무것도 못 지운다.
+경계 조건 세 가지를 지켜야 한다:
+- **`.m`/`.mm`은 제외** — ObjC 클래스 심볼도 hidden 되는데, 소비 측이 쓰는 `LynxUI`,
+  `LynxPropsProcessor`, `LynxCustomMeasureShadowNode`, `LynxNativeLayoutNode`,
+  `AlignParam`/`MeasureParam`, `LynxColorUtils`, `DevToolOverlayDelegate` 8개가 `.mm`에 있다.
+- **Lynx 타깃에만 적용** — Lynx가 LynxBase/PrimJS의 C++ 심볼 375개(`lynx::base::logging::*`,
+  `Napi::*`)를 프레임워크 경계 너머로 쓴다. 반대 방향(Lynx의 C++ 심볼을 밖에서 참조)은
+  LynxService/LynxServiceAPI/소비 측 모두 0건이다.
+- 되돌리려면 `HIDE_SYMBOLS=0 pod update` 후 재빌드.
 
 **PrivateHeaders 제거**(`SLIM_HEADERS=1`, 기본): xcframework 완성 후 서명 직전에
 슬라이스별 `PrivateHeaders/`를 지운다. 어느 프레임워크에도 `module.private.modulemap`이 없어
@@ -95,7 +113,8 @@ pod의 버전은 podspec 의존성 제약을 `pod update`가 해석해 `Podfile.
 (예: Lynx 3.6.0 → PrimJS/quickjs 3.6.1, Lynx 3.9.0 → PrimJS/quickjs 3.8.0-alpha.6 — 정확 고정이라
 손으로 버전을 맞추면 안 된다). 버전 변경 후에는 `pod install`이 아니라 `pod update`를 쓴다 —
 install은 이전 `Podfile.lock`에 잠긴 버전을 요구사항으로 합류시켜 충돌한다.
-Podfile의 `post_install`은 pod 소스별 `-Werror`를 제거한다 —
+Podfile의 `post_install`은 pod 소스별 `-Werror`를 제거하고(아래), Lynx 타깃의 C/C++ 소스에
+`-fvisibility=hidden`을 붙인다(위 **심볼 가시성**). `-Werror` 제거는 —
 새 Xcode의 clang이 경고를 추가할 때마다 빌드가 깨지는 것을 막는다 (예: Xcode 26.5의
 `-Wnontrivial-memcall`).
 

@@ -76,9 +76,17 @@ archive() {
   #                                     : 디버그·로컬 심볼 스트립. non-global이라 export 심볼은 유지된다
   #                                       (all로 바꾸면 소비 측 링크가 깨진다). dSYM은 스트립 전에
   #                                       생성되므로 INCLUDE_DSYM=1은 그대로 동작한다.
-  #   GCC_SYMBOLS_PRIVATE_EXTERN(Symbols Hidden by Default)은 넣지 않는다 —
-  #   프레임워크 간 심볼 링크(Lynx→PrimJS, SDWebImageWebPCoder→libwebp)와
-  #   C++ 예외/RTTI가 깨질 수 있다.
+  #   CLANG_CXX_INLINES_HIDDEN=YES      : -fvisibility-inlines-hidden. C++ 인라인/템플릿 인스턴스만
+  #                                       hidden으로 내린다 (Lynx에만 weak 심볼이 1,548개 있다).
+  #                                       ObjC 클래스 심볼에는 영향이 없고, 프레임워크 간에 coalesce되는
+  #                                       weak 심볼은 std::__1::piecewise_construct 하나뿐이라
+  #                                       (상태 없는 태그 객체) 싱글톤 중복 위험도 없다.
+  #
+  #   GCC_SYMBOLS_PRIVATE_EXTERN(Symbols Hidden by Default)은 여기서 넣지 않는다 —
+  #   모든 타깃에 일괄 적용되면 프레임워크 간 심볼 링크(Lynx→LynxBase/PrimJS,
+  #   SDWebImageWebPCoder→libwebp)와 ObjC 클래스 export가 깨진다.
+  #   Lynx 엔진 C/C++ 소스에 한정한 -fvisibility=hidden은 Podfile의 post_install이
+  #   파일 단위로 붙인다 (HIDE_SYMBOLS=0으로 끌 수 있다).
   xcodebuild archive \
     -workspace "${WORKSPACE}" \
     -scheme "${SCHEME}" \
@@ -96,6 +104,7 @@ archive() {
     SWIFT_COMPILATION_MODE=wholemodule \
     LLVM_LTO=YES_THIN \
     DEAD_CODE_STRIPPING=YES \
+    CLANG_CXX_INLINES_HIDDEN=YES \
     DEPLOYMENT_POSTPROCESSING=YES \
     STRIP_INSTALLED_PRODUCT=YES \
     STRIP_STYLE=non-global \
