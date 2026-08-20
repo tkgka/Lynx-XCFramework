@@ -13,6 +13,7 @@
 #   SIGN_IDENTITY= ./build.sh     # 코드사인 생략
 #   INCLUDE_DSYM=1 ./build.sh     # dSYM 동봉 (크래시 심볼리케이션용, 산출물 ~860MB)
 #   REUSE_ARCHIVE=1 ./build.sh    # 기존 build/*.xcarchive 재사용 (xcframework만 다시 만듦)
+#   SLIM_HEADERS=0 ./build.sh     # PrivateHeaders 유지 (기본은 제거 — 배포 크기 약 22% 감소)
 #
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -47,6 +48,12 @@ SIGN_IDENTITY="${SIGN_IDENTITY-TFLQDNW4Z9}"  # 빈 값이면 서명하지 않는
 INCLUDE_DSYM="${INCLUDE_DSYM:-0}"
 # 이미 만들어 둔 아카이브를 재사용해 xcframework만 다시 만든다 (아카이브는 수 분 걸린다).
 REUSE_ARCHIVE="${REUSE_ARCHIVE:-0}"
+# 완성된 xcframework에서 PrivateHeaders를 제거한다. 어느 프레임워크에도
+# module.private.modulemap이 없어 모듈로는 노출되지 않는 헤더들이고
+# (Lynx 909개 6.3MB, LynxBase 137개 1.7MB 등, 슬라이스당 ~8MB),
+# 앱 바이너리 크기와는 무관한 순수 배포 용량이다. Lynx.xcframework.zip 기준 13.98 → 10.93MB.
+# 소비 측이 #import <Lynx/…>로 내부 헤더를 직접 당겨 쓰고 있다면 0으로 끈다.
+SLIM_HEADERS="${SLIM_HEADERS:-1}"
 
 DEVICE_ARCHIVE="${BUILD_DIR}/ios_device.xcarchive"
 SIM_ARCHIVE="${BUILD_DIR}/ios_sim.xcarchive"
@@ -149,6 +156,15 @@ for framework in "${FRAMEWORKS[@]}"; do
   echo "▶︎ create-xcframework: ${framework}"
   rm -rf "${OUTPUT_DIR}/${framework}.xcframework"
   xcrun xcodebuild -create-xcframework "${args[@]}" -output "${OUTPUT_DIR}/${framework}.xcframework" > /dev/null
+
+  # 서명 전에 제거해야 _CodeSignature가 실제 내용과 어긋나지 않는다.
+  if [[ "${SLIM_HEADERS}" == "1" ]]; then
+    while IFS= read -r private_headers; do
+      [[ -n "${private_headers}" ]] || continue
+      echo "  · PrivateHeaders 제거: ${private_headers#"${OUTPUT_DIR}/"} ($(du -sh "${private_headers}" | cut -f1))"
+      rm -rf "${private_headers}"
+    done < <(find "${OUTPUT_DIR}/${framework}.xcframework" -type d -name PrivateHeaders)
+  fi
 
   if [[ -n "${SIGN_IDENTITY}" ]]; then
     codesign --timestamp -s "${SIGN_IDENTITY}" "${OUTPUT_DIR}/${framework}.xcframework"

@@ -14,8 +14,23 @@ CocoaPods 없는 환경(SPM `binaryTarget`, Tuist xcframework 의존성)에서 �
    - 산출: `build/ios_device.xcarchive`, `build/ios_sim.xcarchive` (+ 각 `.log`)
 2. **create-xcframework** — 각 아카이브의 `Products/Library/Frameworks/<F>.framework`를
    `FRAMEWORKS` 배열 항목별로 병합해 `Results/<F>.xcframework`를 만든다.
-3. **codesign** — 완성된 xcframework에만 서명한다 (`SIGN_IDENTITY`, 기본 `TFLQDNW4Z9`).
-4. 마지막에 xcframework별 슬라이스 목록을 출력한다. 정상 산출물은
+3. **PrivateHeaders 제거** (`SLIM_HEADERS=1`, 기본) — 서명 직전에 슬라이스별
+   `PrivateHeaders/`를 지운다. 어느 프레임워크에도 `module.private.modulemap`이 없어서
+   모듈로는 노출되지 않는 헤더들이다 (Lynx 909개 6.3MB, LynxBase 137개 1.7MB,
+   LynxService 12KB, SDWebImage 84KB — 슬라이스당 ~8MB). 앱 바이너리 크기와는 무관하고
+   배포 용량만 줄인다: `Lynx.xcframework.zip` 13.98MB → 10.93MB (-22%).
+
+   호환성은 실측으로 확인했다. `@import Lynx`(Swift/ObjC 경로)는 제거 전후 모두 컴파일된다.
+   public 헤더 4개 — `LynxContext+Internal.h`, `LynxBackgroundRuntime+Internal.h`,
+   `LynxTemplateData+Converter.h`, `LynxUIRendererProtocol.h` — 가 `#if defined(__cplusplus)`
+   블록에서 private 헤더를 include하지만, `core/shell/ios/js_proxy_darwin.h`처럼 소스트리
+   상대경로를 쓰기 때문에 flat한 `PrivateHeaders/` 레이아웃에서는 **제거 전에도 똑같이
+   `file not found`로 실패한다** (pod 빌드 안에서만 `HEADER_SEARCH_PATHS`로 해석되는 경로다).
+   즉 소비 측에서 원래 도달할 수 없던 헤더들이라 제거해도 달라지는 것이 없다.
+
+   > 그래도 소비 측 빌드가 깨지면 `SLIM_HEADERS=0`으로 되돌린다.
+4. **codesign** — 완성된 xcframework에만 서명한다 (`SIGN_IDENTITY`, 기본 `TFLQDNW4Z9`).
+5. 마지막에 xcframework별 슬라이스 목록을 출력한다. 정상 산출물은
    `ios-arm64`(실기기) + `ios-arm64_x86_64-simulator` 두 슬라이스를 가진다.
 
 옵션 (환경변수):
@@ -26,6 +41,7 @@ CocoaPods 없는 환경(SPM `binaryTarget`, Tuist xcframework 의존성)에서 �
 | `SIGN_IDENTITY` | `TFLQDNW4Z9` | 빈 값이면 서명 생략 |
 | `INCLUDE_DSYM` | `0` | `1`이면 dSYM 동봉 — 크래시 심볼리케이션 가능하지만 77MB → ~860MB |
 | `REUSE_ARCHIVE` | `0` | `1`이면 기존 `build/*.xcarchive` 재사용, xcframework만 재생성 |
+| `SLIM_HEADERS` | `1` | `0`이면 `PrivateHeaders/`를 남긴다 (기본은 제거 — 아래 참고) |
 
 ## 2. 산출물
 

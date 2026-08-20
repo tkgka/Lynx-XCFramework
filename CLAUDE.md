@@ -29,6 +29,7 @@ PLATFORMS=device ./build.sh   # 실기기 슬라이스만
 SIGN_IDENTITY= ./build.sh     # 코드사인 생략 (기본 identity: TFLQDNW4Z9)
 INCLUDE_DSYM=1 ./build.sh     # dSYM 동봉 (산출물 77MB → ~860MB)
 REUSE_ARCHIVE=1 ./build.sh    # 기존 build/*.xcarchive 재사용, xcframework 재생성만 수행
+SLIM_HEADERS=0 ./build.sh     # PrivateHeaders 유지 (기본은 제거)
 
 # 산출물 슬라이스 확인 (build.sh가 끝에 자동 출력하는 것과 동일)
 for f in Results/*.xcframework; do echo "$f:"; ls "$f" | grep ios; done
@@ -56,6 +57,7 @@ Podfile (버전 고정)
                                       # BUILD_LIBRARY_FOR_DISTRIBUTION=YES, 서명 없음
                                       # 크기 최적화(-Oz / -Osize / thin LTO / strip) 적용
   → xcrun xcodebuild -create-xcframework   # 프레임워크별 device+sim 슬라이스 병합
+  → PrivateHeaders 제거 (SLIM_HEADERS=1, 기본)
   → codesign (완성된 xcframework에만)
   → Results/*.xcframework             # 8개
 ```
@@ -68,6 +70,17 @@ Podfile (버전 고정)
 thin LTO, dead code stripping, 심볼 스트립(`STRIP_STYLE=non-global`)을 xcodebuild CLI 인자로 넘겨
 모든 pod 타깃에 강제 적용한다. `STRIP_STYLE`을 `all`로 올리거나
 `GCC_SYMBOLS_PRIVATE_EXTERN`(Symbols Hidden by Default)을 켜면 프레임워크 간 심볼 링크가 깨진다.
+
+**PrivateHeaders 제거**(`SLIM_HEADERS=1`, 기본): xcframework 완성 후 서명 직전에
+슬라이스별 `PrivateHeaders/`를 지운다. 어느 프레임워크에도 `module.private.modulemap`이 없어
+모듈로는 노출되지 않는 헤더들이고(Lynx 909개 6.3MB, LynxBase 137개 1.7MB, 슬라이스당 ~8MB),
+앱 바이너리 크기와 무관한 순수 배포 용량이다 — `Lynx.xcframework.zip` 13.98 → 10.93MB.
+`@import Lynx`는 제거 전후 모두 정상 컴파일된다(실측). public 헤더 4개
+(`LynxContext+Internal.h`, `LynxBackgroundRuntime+Internal.h`, `LynxTemplateData+Converter.h`,
+`LynxUIRendererProtocol.h`)가 `#if defined(__cplusplus)` 안에서 private 헤더를 include하지만
+`core/shell/ios/js_proxy_darwin.h`처럼 소스트리 상대경로라 flat한 `PrivateHeaders/` 레이아웃에서는
+제거 전에도 해석되지 않는다 — 즉 소비 측에서 도달할 수 없는 헤더였다.
+그래도 문제가 생기면 `SLIM_HEADERS=0`으로 끈다.
 
 바이너리 링크 그래프 (otool -L 기준, 화살표 = "링크한다"):
 
