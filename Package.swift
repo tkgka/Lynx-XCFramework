@@ -27,42 +27,42 @@ let package = Package(
         .binaryTarget(
             name: "Lynx",
             url: "https://github.com/xenonClient/Lynx-XCFramework/releases/download/4.0.1/Lynx.xcframework.zip",
-            checksum: "56536ba6fc0b6eb7f7cf19213e2b83c4cde915636249d9e91b524526174b10a6"
+            checksum: "aaad2c25daa71c5040d3cee385910c1a8334ef9f89780c2aed56f988e42beae8"
         ),
         .binaryTarget(
             name: "LynxBase",
             url: "https://github.com/xenonClient/Lynx-XCFramework/releases/download/4.0.1/LynxBase.xcframework.zip",
-            checksum: "fa8d9cafc7658c3f5a8af10d0a76959e3f325be439c56552195b01839b1ee5f2"
+            checksum: "d070080bfd4e6f85237416c49232d107ca85d8e944a9ad675ff7b9666c329a46"
         ),
         .binaryTarget(
             name: "LynxService",
             url: "https://github.com/xenonClient/Lynx-XCFramework/releases/download/4.0.1/LynxService.xcframework.zip",
-            checksum: "cd6a71dfd4f151446d263ca19ae88452c9bff4856a1e792b13239b2baf6bcce8"
+            checksum: "c976a2048b3db1f88681a13c55dd0857cf74965e4c10968d0da5df62452b7605"
         ),
         .binaryTarget(
             name: "LynxServiceAPI",
             url: "https://github.com/xenonClient/Lynx-XCFramework/releases/download/4.0.1/LynxServiceAPI.xcframework.zip",
-            checksum: "8120b41ad4e30ba5c6506b89ad6576ac447e1236f14c31024040be8259b3cdc1"
+            checksum: "5e4a0ad9725e37e83392096a0d9f6f7abe7c8e2c5b3cc10bbad5c3e7b63492ed"
         ),
         .binaryTarget(
             name: "PrimJS",
             url: "https://github.com/xenonClient/Lynx-XCFramework/releases/download/4.0.1/PrimJS.xcframework.zip",
-            checksum: "93e92cf59a4e813c47e2f53f5b2b554ce9e246718ee8d6963123f9efe8d78702"
+            checksum: "a6cd602d9447d3d22faaddf632e6fa26a8aaf7ed0b35021e71b5ef305e657def"
         ),
         .binaryTarget(
             name: "SDWebImage",
             url: "https://github.com/xenonClient/Lynx-XCFramework/releases/download/4.0.1/SDWebImage.xcframework.zip",
-            checksum: "15788bd9a60c6f680f01d2e45634cedfddeb30dd25dcb5640bca0431c2cb1675"
+            checksum: "df02607f92d089b2d1ad4a3bca3278eab2d76cae1ca478f95f93b1a938d8b409"
         ),
         .binaryTarget(
             name: "SDWebImageWebPCoder",
             url: "https://github.com/xenonClient/Lynx-XCFramework/releases/download/4.0.1/SDWebImageWebPCoder.xcframework.zip",
-            checksum: "9578099410682191edf34a022db4723c14a46540a9c91c03437886fcc2ae0f99"
+            checksum: "5243c2b8eadca38a00b2f6baddb4ab19557f4053d63191ca150e5cfdea5e3170"
         ),
         .binaryTarget(
             name: "libwebp",
             url: "https://github.com/xenonClient/Lynx-XCFramework/releases/download/4.0.1/libwebp.xcframework.zip",
-            checksum: "4479a3e89a463155ae5f3df51e59c21edbbbf5e622893c8269971d81d6f1f0af"
+            checksum: "7168a3e314305b69f3cc58ef0dbec514776351da037b01939d03bda336b3c2e9"
         ),
     ]
 )
