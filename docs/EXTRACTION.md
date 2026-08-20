@@ -29,7 +29,7 @@ CocoaPods 없는 환경(SPM `binaryTarget`, Tuist xcframework 의존성)에서 �
 
 ## 2. 산출물
 
-`Results/`에 9개가 생긴다. 배포 대상은 앞의 8개다:
+`Results/`에 8개가 생긴다. 전부 배포 대상이다:
 
 ```
 Lynx.xcframework                  ← LynxBase / LynxServiceAPI / PrimJS 링크
@@ -40,12 +40,14 @@ PrimJS.xcframework
 SDWebImage.xcframework
 SDWebImageWebPCoder.xcframework   ← libwebp 링크
 libwebp.xcframework
-Lynx_XcFramework.xcframework          ← 이 프로젝트 자체 타깃 산출물 — 배포 대상 아님
 ```
 
-`Lynx_XcFramework`은 추출 앵커인 `Lynx-XcFramework` framework 타깃의 산출물이다. 이 타깃의
+추출 앵커인 `Lynx-XcFramework` framework 타깃은 xcframework로 만들지 않는다. 이 타깃의
 소스는 `Lynx-XcFramework/Anchor.swift` 하나뿐이다 — 아카이브 시 모든 pod가 함께 빌드되게
 하는 앵커 역할만 하며, 소스가 하나도 없으면 프레임워크 링크가 실패할 수 있어 유지한다.
+산출물 자체는 소비 측에 불필요하고, `MACH_O_TYPE=staticlib`이라 LTO를 켜면 바이너리가
+Mach-O가 아닌 LLVM 비트코드로 남아 `create-xcframework`가 아키텍처를 읽지 못한다
+(`Unknown header: 0xb17c0de`).
 
 ## 3. SPM 배포 (GitHub Release + binaryTarget)
 
