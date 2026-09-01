@@ -1,0 +1,8 @@
+# Lynx unexported symbols — 정적 목록 (재생성 불필요).
+#
+# Lynx의 공개 헤더 360개 중 C++ namespace를 노출하는 파일은 0건이고, Lynx의 C++ 심볼을
+# 프레임워크 밖(LynxService/LynxServiceAPI/소비 측)에서 참조하는 곳도 0건이다 — 형제가
+# 참조하는 export 12개는 전부 ObjC 클래스·C 상수다 (nm 교차 분석, 4.0.1 arm64).
+# 따라서 C++ 맹글 심볼 전체를 와일드카드 한 줄로 숨긴다. 남는 export가 dead-strip과
+# LTO의 루트에서 빠지면서 링커가 미사용 C++ 코드를 실제로 제거할 수 있게 된다.
+__Z*

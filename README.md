@@ -24,7 +24,8 @@ import Lynx
 import LynxService
 ```
 
-iOS 12.0+, device(arm64) + simulator(arm64/x86_64) 슬라이스 포함.
+iOS 12.0+, device(arm64) + simulator(arm64) 슬라이스 포함. 시뮬레이터 x86_64는 배포 크기
+때문에 기본 제외한다 — Intel Mac에서 소비해야 하면 `KEEP_X86_64=1`로 재추출한다.
 
 ## 버전 업데이트 (GitHub Actions)
 
@@ -50,7 +51,9 @@ pod install    # 최초 1회
   (릴리스 워크플로가 재생성 — 직접 수정 금지)
 - `Podfile` — Lynx 버전 고정 (릴리스 버전의 단일 소스 — 나머지 pod는 podspec 제약으로 해석)
 - `build.sh` — 아카이브 → create-xcframework → codesign 자동화
-- `scripts/` — 버전 조회 / Podfile 갱신 / zip·checksum·매니페스트 생성
+- `scripts/` — 버전 조회 / Podfile 갱신 / zip·checksum·매니페스트 생성 / unexported 심볼 목록 재생성
+- `symbols/` — 타깃별 `-unexported_symbols_list` 목록 (Lynx는 정적 `__Z*`, PrimJS/LynxBase는
+  `scripts/gen-unexported-symbols.sh` 산출물 — 버전 업으로 링크가 깨지면 재생성)
 - `.github/workflows/` — 버전 업 PR(수동) · 빌드/릴리스(머지 시 자동)
 - `Lynx-XCFramework/` — 추출 앵커 타깃 소스 (Anchor.swift 하나 — 산출물은 배포 대상 아님)
 - `Results/`, `dist/` — 추출/패키징 산출물 (git-ignored)

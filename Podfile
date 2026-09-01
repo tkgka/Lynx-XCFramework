@@ -29,6 +29,16 @@ end
 #   HIDE_SYMBOLS=0 pod update
 HIDE_SYMBOLS = ENV.fetch('HIDE_SYMBOLS', '1') == '1'
 
+# unexported symbols 목록 스위치. symbols/<타깃>.unexported.txt 가 있는 타깃(Lynx/PrimJS/
+# LynxBase)의 링크에 -unexported_symbols_list 를 건다. export에서 빠진 심볼은 dead-strip과
+# LTO의 루트에서 제외되어 미사용 코드가 실제로 제거된다. 형제가 참조하는 심볼은 목록
+# 생성 시점에 nm 교차 분석으로 걸러져 있다 (scripts/gen-unexported-symbols.sh).
+# 목록이 낡으면 아카이브의 링크 단계에서 undefined symbol로 즉시 실패한다 — 그때는
+# 스크립트 헤더의 2-pass 절차로 재생성한다. 0이면 통째로 건너뛴다:
+#   UNEXPORTED_LISTS=0 pod update
+UNEXPORTED_LISTS = ENV.fetch('UNEXPORTED_LISTS', '1') == '1'
+UNEXPORTED_DIR = File.expand_path('symbols', __dir__)
+
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     target.build_configurations.each do |config|
@@ -41,6 +51,20 @@ post_install do |installer|
       flags = file.settings && file.settings['COMPILER_FLAGS']
       next unless flags && flags.include?('-Werror')
       file.settings['COMPILER_FLAGS'] = flags.gsub(/-Werror(=\S+)?/, '').squeeze(' ').strip
+    end
+
+    # unexported symbols 목록을 링커에 건다 (위 UNEXPORTED_LISTS 주석 참고).
+    # 목록 파일이 있는 타깃(Lynx/PrimJS/LynxBase)에만 적용된다.
+    if UNEXPORTED_LISTS
+      list_path = File.join(UNEXPORTED_DIR, "#{target.name}.unexported.txt")
+      if File.exist?(list_path)
+        target.build_configurations.each do |config|
+          config.build_settings['OTHER_LDFLAGS'] = [
+            '$(inherited)',
+            "-Wl,-unexported_symbols_list,#{list_path}",
+          ]
+        end
+      end
     end
 
     # Lynx 엔진의 C/C++ 심볼을 hidden으로 내린다.

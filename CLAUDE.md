@@ -21,7 +21,7 @@ SPM `binaryTarget` / Tuist xcframework 의존성으로 소비할 수 있게 만�
 # 최초 1회 (Pods/는 git-ignored)
 pod install
 
-# XCFramework 추출 — device(arm64) + simulator(arm64/x86_64) (기본, 수 분 소요)
+# XCFramework 추출 — device(arm64) + simulator(arm64) (기본, 수 분 소요)
 ./build.sh
 
 PLATFORMS=sim ./build.sh      # 시뮬레이터 슬라이스만 (빠른 반복용 — 소비 측 실기기 빌드는 깨짐)
@@ -30,6 +30,12 @@ SIGN_IDENTITY= ./build.sh     # 코드사인 생략 (기본 identity: TFLQDNW4Z9
 INCLUDE_DSYM=1 ./build.sh     # dSYM 동봉 (산출물 77MB → ~860MB)
 REUSE_ARCHIVE=1 ./build.sh    # 기존 build/*.xcarchive 재사용, xcframework 재생성만 수행
 SLIM_HEADERS=0 ./build.sh     # PrivateHeaders 유지 (기본은 제거)
+SLIM_LINK_ONLY_HEADERS=0 ./build.sh  # PrimJS/libwebp의 공개 Headers·Modules 유지 (기본은 제거)
+KEEP_X86_64=1 ./build.sh      # 시뮬레이터 x86_64 슬라이스 유지 (기본은 arm64만)
+
+# unexported symbols 목록 재생성 (버전 업 후 링크가 undefined symbol로 깨질 때만 — 2-pass)
+UNEXPORTED_LISTS=0 pod update && PLATFORMS=device ./build.sh
+scripts/gen-unexported-symbols.sh && pod update && ./build.sh
 
 # 산출물 슬라이스 확인 (build.sh가 끝에 자동 출력하는 것과 동일)
 for f in Results/*.xcframework; do echo "$f:"; ls "$f" | grep ios; done
@@ -53,12 +59,14 @@ scripts/make-manifest.sh 3.9.0 <owner/repo> # Results/ → dist/*.zip + url:chec
 ```
 Podfile (버전 고정)
   → pod install                       # Pods/ 생성 (post_install이 Lynx C/C++ 소스에
-                                      #  -fvisibility=hidden 부착)
-  → xcodebuild archive ×2             # generic/platform=iOS, iOS Simulator
+                                      #  -fvisibility=hidden 부착 + Lynx/PrimJS/LynxBase에
+                                      #  -unexported_symbols_list(symbols/) 링크 플래그)
+  → xcodebuild archive ×2             # generic/platform=iOS, iOS Simulator(arm64만)
                                       # BUILD_LIBRARY_FOR_DISTRIBUTION=YES, 서명 없음
-                                      # 크기 최적화(-Oz / -Osize / thin LTO / strip) 적용
+                                      # 크기 최적화(-Oz / -Osize / full LTO / strip) 적용
   → xcrun xcodebuild -create-xcframework   # 프레임워크별 device+sim 슬라이스 병합
   → PrivateHeaders 제거 (SLIM_HEADERS=1, 기본)
+  → PrimJS/libwebp Headers·Modules 제거 (SLIM_LINK_ONLY_HEADERS=1, 기본)
   → codesign (완성된 xcframework에만)
   → Results/*.xcframework             # 8개
 ```
@@ -68,11 +76,13 @@ Podfile (버전 고정)
 `MACH_O_TYPE=staticlib`이라 LTO 하에서는 `create-xcframework`가 실패한다.
 
 **크기 최적화**: 아카이브 시 `-Oz`(`GCC_OPTIMIZATION_LEVEL=z`), Swift `-Osize` + wholemodule,
-thin LTO, dead code stripping, `-fvisibility-inlines-hidden`(`CLANG_CXX_INLINES_HIDDEN`),
+full LTO(`LLVM_LTO=YES` — thin 대비 device 바이너리 합계 −8.8% 실측), dead code stripping,
+`-fvisibility-inlines-hidden`(`CLANG_CXX_INLINES_HIDDEN`),
 심볼 스트립(`STRIP_STYLE=non-global`)을 xcodebuild CLI 인자로 넘겨 모든 pod 타깃에 강제 적용한다.
 `STRIP_STYLE`을 `all`로 올리거나 `GCC_SYMBOLS_PRIVATE_EXTERN`(Symbols Hidden by Default)을
 **모든 타깃에** 켜면 프레임워크 간 심볼 링크와 ObjC 클래스 export가 깨진다 — 대신 Lynx 엔진의
-C/C++ 소스에만 파일 단위로 거는 방식을 쓴다 (아래 **심볼 가시성**).
+C/C++ 소스에만 파일 단위로 거는 방식(아래 **심볼 가시성**)과, 참조 분석으로 만든 타깃별
+unexported 목록(아래 **unexported 심볼 목록**)을 쓴다.
 
 **심볼 가시성**(`HIDE_SYMBOLS=1`, 기본): Podfile의 `post_install`이 **Lynx 타깃의 `.cc`/`.c`/`.cpp`
 파일에만** `-fvisibility=hidden`을 붙이고, xcconfig의 `EXPORT_SYMBOLS_FOR_DEVTOOL`을 0으로 내린다.
@@ -89,6 +99,22 @@ Lynx 소스(`core/base/lynx_export.h`)는 원래 `-fvisibility=hidden` 전제로
   LynxService/LynxServiceAPI/소비 측 모두 0건이다.
 - 되돌리려면 `HIDE_SYMBOLS=0 pod update` 후 재빌드.
 
+**unexported 심볼 목록**(`UNEXPORTED_LISTS=1`, 기본): `post_install`이 `symbols/<타깃>.unexported.txt`가
+있는 타깃(Lynx/PrimJS/LynxBase)의 `OTHER_LDFLAGS`에 `-Wl,-unexported_symbols_list`를 건다.
+가시성 hidden 뒤에도 남는 export(ObjC++ `.mm`에서 나온 C++ 심볼, PrimJS/LynxBase의 미참조
+C·C++ 심볼)를 export 테이블에서 빼서 dead-strip과 LTO가 실제로 제거할 수 있게 한다 —
+4.0.1 실측 누적 −11.3% (full LTO 포함, device 8개 합계 9,069,640 → 8,040,480 B).
+- `Lynx.unexported.txt`는 **정적 한 줄**(`__Z*`)이다 — Lynx의 C++ 심볼을 밖에서 참조하는 곳이
+  0건이고(형제가 참조하는 export 12개는 전부 ObjC 클래스·C 상수), 공개 헤더 360개 중 C++
+  namespace를 노출하는 파일도 0건이다.
+- `PrimJS`/`LynxBase` 목록은 `scripts/gen-unexported-symbols.sh`가 **nm 교차 분석**으로 생성한다
+  (export − 형제 7개의 undefined 합집합 − ObjC 심볼). 버전 업으로 목록이 낡아 형제가 참조하는
+  심볼이 목록에 들어가면 **아카이브 링크 단계에서 undefined symbol로 즉시 실패**한다 — 런타임에
+  조용히 깨지는 경로가 아니다. 그때는 스크립트 헤더의 2-pass 절차로 재생성한다
+  (`UNEXPORTED_LISTS=0 pod update` → device 빌드 → 스크립트 → `pod update` → 재빌드).
+- 소비 측 전제: 아무도 Lynx C++ API·PrimJS·libwebp를 직접 쓰지 않는다 (Xenon·Lynx-WebGPU·airflow
+  grep 0건 확인, 2026-09-01).
+
 **PrivateHeaders 제거**(`SLIM_HEADERS=1`, 기본): xcframework 완성 후 서명 직전에
 슬라이스별 `PrivateHeaders/`를 지운다. 어느 프레임워크에도 `module.private.modulemap`이 없어
 모듈로는 노출되지 않는 헤더들이고(Lynx 909개 6.3MB, LynxBase 137개 1.7MB, 슬라이스당 ~8MB),
@@ -99,6 +125,18 @@ Lynx 소스(`core/base/lynx_export.h`)는 원래 `-fvisibility=hidden` 전제로
 `core/shell/ios/js_proxy_darwin.h`처럼 소스트리 상대경로라 flat한 `PrivateHeaders/` 레이아웃에서는
 제거 전에도 해석되지 않는다 — 즉 소비 측에서 도달할 수 없는 헤더였다.
 그래도 문제가 생기면 `SLIM_HEADERS=0`으로 끈다.
+
+**링크 전용 헤더 제거**(`SLIM_LINK_ONLY_HEADERS=1`, 기본): PrimJS·libwebp는 공개
+`Headers/`·`Modules/`까지 지운다 — import 불가·링크만 가능해진다. 다른 프레임워크의 배포되는
+공개 헤더가 이 둘을 `#import`하는 곳이 0건이고(4.0.1 산출물 grep), 소비 측도 링크만 하면 된다.
+PrimJS 헤더 63개는 압축 기준 0.42MB로 해당 zip의 21%다. 소비 측이 `import PrimJS`나
+`#import <webp/…>`를 직접 쓰게 되면 `SLIM_LINK_ONLY_HEADERS=0`으로 끈다.
+
+**x86_64 시뮬레이터 슬라이스 제거**(`KEEP_X86_64=0`, 기본): sim 아카이브에
+`EXCLUDED_ARCHS=x86_64`를 넘긴다. sim fat 바이너리의 절반이 x86_64인데 소비 측 개발 장비와
+CI 러너(`macos-26`)가 전부 Apple Silicon이라 쓰이는 곳이 없다 — 릴리스 zip 8개 합계
+13.13 → 9.22MB 실측. 슬라이스명이 `ios-arm64_x86_64-simulator`에서 `ios-arm64-simulator`로
+바뀐다. Intel Mac 시뮬레이터 빌드가 필요해지면 `KEEP_X86_64=1`.
 
 바이너리 링크 그래프 (otool -L 기준, 화살표 = "링크한다"):
 
@@ -114,7 +152,8 @@ pod의 버전은 podspec 의존성 제약을 `pod update`가 해석해 `Podfile.
 손으로 버전을 맞추면 안 된다). 버전 변경 후에는 `pod install`이 아니라 `pod update`를 쓴다 —
 install은 이전 `Podfile.lock`에 잠긴 버전을 요구사항으로 합류시켜 충돌한다.
 Podfile의 `post_install`은 pod 소스별 `-Werror`를 제거하고(아래), Lynx 타깃의 C/C++ 소스에
-`-fvisibility=hidden`을 붙인다(위 **심볼 가시성**). `-Werror` 제거는 —
+`-fvisibility=hidden`을 붙이며(위 **심볼 가시성**), `symbols/`의 unexported 목록을 링커에
+건다(위 **unexported 심볼 목록**). `-Werror` 제거는 —
 새 Xcode의 clang이 경고를 추가할 때마다 빌드가 깨지는 것을 막는다 (예: Xcode 26.5의
 `-Wnontrivial-memcall`).
 
@@ -136,6 +175,11 @@ Podfile의 `post_install`은 pod 소스별 `-Werror`를 제거하고(아래), Ly
   바꿔 써도 되지만 커밋하지 않는다.
 - 프레임워크 추가/제거는 `build.sh`와 `scripts/make-manifest.sh`의 `FRAMEWORKS` 배열을
   함께 수정한다.
+- **시뮬레이터 슬라이스는 arm64뿐이다** (`KEEP_X86_64=0` 기본). Intel Mac에서는 소비 측
+  시뮬레이터 빌드가 깨진다 — 현재 소비 팀 장비·CI가 전부 Apple Silicon임을 전제로 한 결정이고,
+  전제가 깨지면 `KEEP_X86_64=1`로 되돌린다.
+- **버전 업 후 아카이브가 undefined symbol로 실패하면** `symbols/`의 unexported 목록이 낡은
+  것이다 — `scripts/gen-unexported-symbols.sh` 헤더의 2-pass 절차로 재생성한다.
 
 ## Distribution (GitHub Actions)
 
