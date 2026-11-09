@@ -35,11 +35,13 @@ FRAMEWORKS=(
 )
 # 플레이버가 더하는 프레임워크. `Lynx` 제품과 별개의 `LynxDevtool` 제품으로 묶어, 소비 측이
 # DEV 구성에서만 링크할 수 있게 한다.
+# 빈 배열은 `${arr[@]+"${arr[@]}"}`로 펼친다 — macOS 기본 bash 3.2는 set -u에서
+# 빈 배열의 "${arr[@]}"를 unbound variable로 본다 (bash 4.4+만 허용).
 EXTRA=()
 if [[ -n "${EXTRA_FRAMEWORKS:-}" ]]; then
   read -r -a EXTRA <<< "${EXTRA_FRAMEWORKS}"
 fi
-ALL_FRAMEWORKS=("${FRAMEWORKS[@]}" "${EXTRA[@]}")
+ALL_FRAMEWORKS=("${FRAMEWORKS[@]}" ${EXTRA[@]+"${EXTRA[@]}"})
 
 rm -rf "${DIST_DIR}"
 mkdir -p "${DIST_DIR}" "$(dirname "${MANIFEST_OUT}")"
