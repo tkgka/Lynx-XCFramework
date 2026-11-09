@@ -165,12 +165,14 @@ Podfile의 `post_install`은 pod 소스별 `-Werror`를 제거하고(아래), Ly
 Lynx 버전은 루트 Podfile의 `pod 'Lynx', '<버전>'` 줄 하나에서 읽는다(`LYNX_VERSION`) — devtool pod이
 같은 버전을 따라간다. 스크립트는 `devtool/Podfile.lock`의 Lynx 버전이 루트와 다르면 `pod update`,
 같으면 `pod install`을 돈다. 끝에 네 프레임워크와 `LynxDebugResources.bundle`(LogBox·스위치 페이지)
-존재, Lynx export 심볼 중 devtool 관련 개수를 찍는다.
+존재, Lynx의 export / C++ export 개수(릴리스판 4.2.0 기준 2,224 / 932보다 커야 한다)를 찍는다.
 
-배포는 릴리스 워크플로 밖이다. `MANIFEST_REPO=<owner/repo>`를 주면 `dist-devtool/`에 zip 12개와
-`Lynx` + `LynxDevtool` 두 제품을 선언한 `Package.swift`가 생긴다(태그 `<Lynx 버전>-devtool`, 예
-`4.2.0-devtool`). 별도 브랜치에서 그 파일을 루트 `Package.swift`로 복사·커밋하고 태그를 붙인 뒤 zip을
-Release 자산으로 올린다. 소비 측은 `exact: "4.2.0-devtool"`로 받아 DEV 구성에만 `LynxDevtool` 제품을
+배포는 `build-devtool.yml`(**Build & Release Devtool Flavor**, 수동 실행)이 한다. 릴리스판이 나온 뒤
+돌리면 `MANIFEST_REPO`로 `dist-devtool/`에 zip 12개와 `Lynx` + `LynxDevtool` 두 제품을 선언한
+`Package.swift`를 만들고, `devtool/Podfile.lock`을 main에 커밋한 뒤, main 위에 Package.swift만 바꾼 커밋을
+만들어 `<Lynx 버전>-devtool` 태그(예 `4.2.0-devtool`)를 붙이고 prerelease로 올린다. 그 태그 커밋은 어느
+브랜치에도 없다 — main의 Package.swift는 릴리스판 그대로다. 같은 태그가 있으면 건너뛰고, `force` 입력으로
+다시 만든다. 소비 측은 `exact: "4.2.0-devtool"`로 받아 DEV 구성에만 `LynxDevtool` 제품을
 링크하고, 앱에서 `LynxEnv.prepareDevToolForDevelopmentBeforeInit()` → `LynxEnv.sharedInstance()` →
 `devtoolEnabled = true`(+`logBoxEnabled`)를 켠다. 프로덕션에는 넣지 않는다(패키지 크기, 디버그 포트).
 `LynxDevtool/LynxRecorder`와 Lynx `-dev` 배포판(Trace/Recorder)은 범위 밖이다.

@@ -100,13 +100,29 @@ if find "${OUTPUT_DIR}/LynxDevtool.xcframework" -type d -name 'LynxDebugResource
 else
   echo "  ⚠︎ LynxDebugResources.bundle을 찾지 못했습니다 — LogBox/스위치 페이지가 비어 보일 수 있습니다" >&2
 fi
-# devtool 전용 export가 살아 있어야 LynxDevtool이 Lynx를 링크한다. 슬라이스 하나만 본다.
-lynx_binary="$(find "${OUTPUT_DIR}/Lynx.xcframework" -type f -name Lynx -path '*ios-arm64*' 2>/dev/null | head -n1)"
-if [[ -n "${lynx_binary}" ]]; then
-  devtool_symbols="$(nm -gU "${lynx_binary}" 2>/dev/null | grep -c -i 'devtool' || true)"
-  echo "  · Lynx export 심볼 중 devtool 관련: ${devtool_symbols}개 (릴리스판은 0에 가깝다)"
+# 심볼 축소가 꺼졌는지 — LynxDevtool이 Lynx 엔진의 C++ 심볼을 링크하려면 export돼 있어야 한다.
+# 기준값은 릴리스판 4.2.0 device 슬라이스 실측: export 2,224개 중 C++(__Z*) 932개, devtool 이름 11개.
+# devtool판은 C++ export가 그보다 훨씬 많아야 한다(HIDE_SYMBOLS 전의 4.0.1 실측은 10,171개).
+lynx_binary="${OUTPUT_DIR}/Lynx.xcframework/ios-arm64/Lynx.framework/Lynx"
+if [[ -f "${lynx_binary}" ]]; then
+  exported="$(nm -gU "${lynx_binary}" 2>/dev/null | awk '{print $NF}')"
+  total="$(printf '%s\n' "${exported}" | grep -c . || true)"
+  cxx="$(printf '%s\n' "${exported}" | grep -c '^__Z' || true)"
+  devtool_symbols="$(printf '%s\n' "${exported}" | grep -c -i 'devtool' || true)"
+  echo "  · Lynx export: ${total}개, C++ ${cxx}개, devtool 이름 ${devtool_symbols}개 (릴리스판 4.2.0: 2,224 / 932 / 11)"
+  if [[ "${cxx}" -le 932 ]]; then
+    echo "  ⚠︎ C++ export가 릴리스판보다 많지 않습니다 — HIDE_SYMBOLS가 꺼지지 않았을 수 있습니다 (Podfile의 LYNX_DEVTOOL 분기와 build-devtool/ios_device.log 확인)" >&2
+  fi
 fi
-[[ ${status} -eq 0 ]] || exit ${status}
+if [[ ${status} -ne 0 ]]; then
+  # pod이 만드는 프레임워크 이름이 DEVTOOL_FRAMEWORKS와 다르면 여기서 걸린다 — 실제 이름을 보여 준다.
+  echo "  아카이브에 있는 프레임워크:" >&2
+  for archive_path in "${BUILD_DIR}"/*.xcarchive; do
+    [[ -d "${archive_path}" ]] || continue
+    echo "    $(basename "${archive_path}"): $(ls "${archive_path}/Products/Library/Frameworks" 2>/dev/null | sed 's/\.framework$//' | tr '\n' ' ')" >&2
+  done
+  exit ${status}
+fi
 
 # 5) (선택) zip + Package.swift — 릴리스 매니페스트(루트 Package.swift)는 건드리지 않는다.
 if [[ -n "${MANIFEST_REPO:-}" ]]; then

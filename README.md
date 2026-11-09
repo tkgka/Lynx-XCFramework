@@ -39,6 +39,7 @@ MANIFEST_REPO=<owner/repo> scripts/build-devtool.sh   # + dist-devtool/{*.zip, P
 
 생성되는 `Package.swift`는 `Lynx`와 `LynxDevtool` 두 제품을 선언하고 태그 `<Lynx 버전>-devtool`
 (예 `4.2.0-devtool`)의 Release 자산을 가리킨다. 디버그 빌드에만 `LynxDevtool` 제품을 링크한다.
+CI에서는 **Build & Release Devtool Flavor** 워크플로(수동 실행)가 빌드부터 prerelease까지 한다.
 상세는 [`docs/EXTRACTION.md`](docs/EXTRACTION.md) §6.
 
 ## 버전 업데이트 (GitHub Actions)

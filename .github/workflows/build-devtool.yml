@@ -1,0 +1,151 @@
+# devtool 플레이버를 빌드해 `<Lynx 버전>-devtool` 태그의 GitHub Release(prerelease)로 배포한다.
+#
+# 트리거: workflow_dispatch (수동). 릴리스판(update-lynx.yml)이 나온 뒤 돌린다.
+#
+# 수행 내용:
+#   1. Podfile의 Lynx 버전 확인 — `<버전>-devtool` 릴리스가 이미 있으면 종료 (force 입력으로 덮어쓰기)
+#   2. scripts/build-devtool.sh — devtool/에서 pod install|update → 아카이브 → Results-devtool/ (12개)
+#      → dist-devtool/{*.zip, Package.swift} (제품 Lynx + LynxDevtool)
+#   3. devtool/Podfile.lock을 main에 커밋 (다음 실행이 같은 해석을 재사용)
+#   4. main 위에 Package.swift만 devtool 매니페스트로 바꾼 커밋을 만들어 `<버전>-devtool` 태그를 붙인다.
+#      그 커밋은 브랜치에 올리지 않는다 — main의 Package.swift는 릴리스판 그대로다.
+#   5. 태그로 prerelease 생성 + zip 업로드
+#
+# 소비 측: `.package(url:, exact: "<버전>-devtool")` → DEV 구성에만 `LynxDevtool` 제품 링크.
+name: Build & Release Devtool Flavor
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '같은 버전의 devtool 릴리스가 있어도 지우고 다시 만든다'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-devtool
+  cancel-in-progress: false
+
+jobs:
+  build-devtool:
+    runs-on: macos-26
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 버전 확인
+        id: version
+        run: |
+          VERSION="$(sed -nE "s/^ *pod 'Lynx', '([0-9.]+)'.*/\1/p" Podfile)"
+          [[ -n "${VERSION}" ]] || { echo "::error::Podfile에서 Lynx 버전을 찾지 못했습니다"; exit 1; }
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${VERSION}-devtool" >> "$GITHUB_OUTPUT"
+          echo "▶︎ Lynx ${VERSION} devtool → 태그 ${VERSION}-devtool"
+
+      - name: 기존 릴리스 확인
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if gh release view "${TAG}" --repo "${{ github.repository }}" > /dev/null 2>&1; then
+            if [[ "${{ inputs.force }}" == "true" ]]; then
+              echo "::notice::force — 기존 릴리스 ${TAG}를 지우고 다시 만듭니다"
+              gh release delete "${TAG}" --repo "${{ github.repository }}" --yes --cleanup-tag
+            else
+              echo "::notice::릴리스 ${TAG}가 이미 존재하므로 건너뜁니다 (다시 만들려면 force)"
+              echo "SKIP=1" >> "$GITHUB_ENV"
+            fi
+          fi
+
+      # update-lynx.yml과 같은 secret · 같은 방식. 없으면 서명 없이 빌드한다.
+      - name: 서명 인증서 설치
+        if: env.SKIP != '1'
+        env:
+          CERT_B64: ${{ secrets.SIGNING_CERTIFICATE_P12 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          if [[ -z "${CERT_B64}" ]]; then
+            echo "::warning::SIGNING_CERTIFICATE_P12 secret이 없어 서명 없이 빌드합니다"
+            exit 0
+          fi
+
+          CERT_PATH="${RUNNER_TEMP}/cert.p12"
+          KEYCHAIN_PATH="${RUNNER_TEMP}/signing.keychain-db"
+
+          echo -n "${CERT_B64}" | base64 --decode -o "${CERT_PATH}"
+
+          security create-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+          security set-keychain-settings -lut 21600 "${KEYCHAIN_PATH}"
+          security unlock-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+
+          security import "${CERT_PATH}" -P "${P12_PASSWORD}" -A -t cert -f pkcs12 -k "${KEYCHAIN_PATH}"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+          security list-keychains -d user -s "${KEYCHAIN_PATH}" login.keychain
+
+          security find-identity -v -p codesigning "${KEYCHAIN_PATH}"
+          echo "DEVTOOL_SIGN_IDENTITY=TFLQDNW4Z9" >> "$GITHUB_ENV"
+
+      - name: devtool XCFramework 추출 + 매니페스트
+        if: env.SKIP != '1'
+        run: |
+          SIGN_IDENTITY="${DEVTOOL_SIGN_IDENTITY:-}" \
+          MANIFEST_REPO="${{ github.repository }}" \
+          scripts/build-devtool.sh
+
+      - name: 빌드 로그 업로드 (실패 시)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-devtool-logs
+          path: |
+            build-devtool/*.log
+            devtool/Podfile.lock
+          if-no-files-found: ignore
+
+      - name: devtool/Podfile.lock 커밋 (main)
+        if: env.SKIP != '1'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add devtool/Podfile.lock
+          if git diff --cached --quiet; then
+            echo "변경 사항 없음 — 커밋 생략"
+          else
+            git commit -m "chore: Lynx ${{ steps.version.outputs.version }} devtool Podfile.lock 갱신"
+            git push
+          fi
+
+      # 태그 커밋은 main에 올리지 않는다 — Package.swift만 devtool 매니페스트로 바뀐 커밋이다.
+      - name: devtool 태그 커밋
+        if: env.SKIP != '1'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          cp dist-devtool/Package.swift Package.swift
+          git add Package.swift
+          git commit -m "chore: Lynx ${{ steps.version.outputs.version }} devtool 매니페스트 (${TAG})"
+          git tag -f "${TAG}"
+          git push -f origin "refs/tags/${TAG}"
+
+      - name: 릴리스 생성
+        if: env.SKIP != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          {
+            echo "devtool 플레이버 — Lynx DevTool 데스크톱 연결용. 프로덕션 빌드에 링크하지 말 것."
+            echo "제품: Lynx (8개) + LynxDevtool (LynxDevtool, BaseDevtool, DebugRouter, SocketRocket)."
+            echo "기본 8개도 릴리스판(${{ steps.version.outputs.version }})과 다른 바이너리다 — 섞어 쓰지 않는다."
+            echo
+            sed -nE 's|^  - ([A-Za-z0-9_]+)(/[^ ]+)? \(([0-9][^)]*)\):?$|\1 \3|p' devtool/Podfile.lock | sort -u
+          } > "${RUNNER_TEMP}/notes.md"
+          gh release create "${TAG}" dist-devtool/*.zip \
+            --repo "${{ github.repository }}" \
+            --title "Lynx ${{ steps.version.outputs.version }} (devtool)" \
+            --prerelease \
+            --notes-file "${RUNNER_TEMP}/notes.md"

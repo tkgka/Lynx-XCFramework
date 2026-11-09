@@ -224,16 +224,22 @@ MANIFEST_REPO=<owner/repo> scripts/build-devtool.sh   # + dist-devtool/{*.zip, P
   devtool pod은 같은 버전을 따라간다.
 - 끝에 검증을 찍는다: 네 프레임워크의 존재, `LynxDevtool.framework` 안의 `LynxDebugResources.bundle`
   (LogBox · 스위치 페이지 · `lynx_core_dev.js` — 없으면 DevTool은 붙어도 LogBox가 비어 보인다),
-  Lynx export 심볼 중 devtool 관련 개수(릴리스판은 0에 가깝고, devtool판은 커야 한다).
+  Lynx의 export / C++ export 개수(릴리스판 4.2.0 device 실측 2,224 / 932 — devtool판은 C++ export가
+  훨씬 많아야 하고, 그렇지 않으면 경고한다). 프레임워크가 빠지면 아카이브에 실제로 있는 이름을 찍고 실패한다.
 
-배포(선택): `MANIFEST_REPO`를 주면 `scripts/make-manifest.sh`가 `RESULTS_DIR`/`DIST_DIR`/
+배포: `MANIFEST_REPO`를 주면 `scripts/make-manifest.sh`가 `RESULTS_DIR`/`DIST_DIR`/
 `EXTRA_FRAMEWORKS`/`MANIFEST_OUT` 덮어쓰기로 `dist-devtool/Package.swift`를 만든다 — 제품 `Lynx`(8개)와
 `LynxDevtool`(4개), 태그 `<Lynx 버전>-devtool`(예 `4.2.0-devtool`, SemVer pre-release라 `exact:`로
-받을 수 있다). 릴리스 워크플로는 이 플레이버를 모르므로 수동이다:
+받을 수 있다). CI에서는 `.github/workflows/build-devtool.yml`(**Build & Release Devtool Flavor**, 수동
+실행)이 이 과정을 끝까지 한다:
 
-1. `git switch -c devtool/4.2.0` 등 별도 브랜치에서 `cp dist-devtool/Package.swift Package.swift` → 커밋
-2. `git tag 4.2.0-devtool` → push, GitHub Release 생성 후 `dist-devtool/*.zip` 12개를 자산으로 업로드
-3. 소비 측: `.package(url:, exact: "4.2.0-devtool")`, DEV 구성에만 `LynxDevtool` 제품 링크.
+1. `<버전>-devtool` 릴리스가 있으면 건너뛴다(`force` 입력이면 지우고 다시 만든다)
+2. 서명 secret이 있으면 `TFLQDNW4Z9`로 서명, 없으면 서명 없이 `scripts/build-devtool.sh` 실행
+3. `devtool/Podfile.lock`을 main에 커밋 (`update-lynx.yml`의 `paths: [Podfile]` 필터에 걸리지 않는다)
+4. main 위에 `Package.swift`만 devtool 매니페스트로 바꾼 커밋을 만들어 태그만 push — 브랜치에는 올리지 않는다
+5. prerelease 생성, `dist-devtool/*.zip` 12개 업로드. 실패하면 `build-devtool/*.log`가 artifact로 남는다
+
+로컬에서 같은 일을 하려면 4·5를 손으로 한다. 소비 측: `.package(url:, exact: "4.2.0-devtool")`, DEV 구성에만 `LynxDevtool` 제품 링크.
    앱 시작 시 `LynxEnv.prepareDevToolForDevelopmentBeforeInit()` → `LynxEnv.sharedInstance()` →
    `devtoolEnabled = true`(+ `logBoxEnabled = true`). 데스크톱은 USB로 실기기를 자동 인식한다.
 
