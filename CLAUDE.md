@@ -41,6 +41,11 @@ swift package dump-package > /dev/null && echo OK
 scripts/latest-pod-version.sh Lynx          # CocoaPods trunk 최신 정식 버전 조회
 scripts/set-lynx-version.sh 3.9.0           # Podfile의 Lynx 버전 갱신 (나머지는 pod update가 해석)
 scripts/make-manifest.sh 3.9.0 <owner/repo> # Results/ → dist/*.zip + url:checksum: Package.swift 생성
+
+# devtool 플레이버 — Lynx DevTool 데스크톱에 연결되는 배포판 (아래 Devtool flavor)
+scripts/build-devtool.sh                    # devtool/에서 pod install|update → Results-devtool/ (12개)
+PLATFORMS=device scripts/build-devtool.sh   # 실기기만 (DevTool 데스크톱은 USB 실기기 연결)
+MANIFEST_REPO=<owner/repo> scripts/build-devtool.sh   # + dist-devtool/{*.zip, Package.swift} (태그 <버전>-devtool)
 ```
 
 - 아카이브 로그: `build/ios_device.log`, `build/ios_sim.log` (실패 시 여기부터 확인)
@@ -135,7 +140,40 @@ Podfile의 `post_install`은 pod 소스별 `-Werror`를 제거하고(아래), Ly
   커밋한다 — **직접 수정하지 말 것.** 로컬 개발 중에는 `.binaryTarget(path: "Results/…")`로
   바꿔 써도 되지만 커밋하지 않는다.
 - 프레임워크 추가/제거는 `build.sh`와 `scripts/make-manifest.sh`의 `FRAMEWORKS` 배열을
-  함께 수정한다.
+  함께 수정한다. devtool 플레이버가 더하는 프레임워크는 `scripts/build-devtool.sh`의
+  `DEVTOOL_FRAMEWORKS`와 Podfile의 `LYNX_DEVTOOL` 분기에 있다.
+
+## Devtool flavor
+
+`scripts/build-devtool.sh`는 [Lynx DevTool](https://github.com/lynx-family/lynx-devtool) 데스크톱에
+연결할 수 있는 배포판을 만든다. 릴리스 파이프라인(`build.sh`)을 그대로 타되 세 가지가 다르다:
+
+- **pod 구성**: Podfile의 `LYNX_DEVTOOL=1` 분기가 `LynxDevtool`(Lynx와 같은 버전, `Framework`
+  서브스펙), `BaseDevtool`, `DebugRouter`(+`MessageTransceiverEnable`, 기본 5.0.15 —
+  `DEBUG_ROUTER_VERSION`), `LynxService`의 `Devtool` 서브스펙을 더한다. `LynxDevtool/Framework`가
+  `SocketRocket`과 PrimJS의 `quickjs_debugger`/`profiler` 서브스펙을 끌어오므로 PrimJS 바이너리도
+  달라진다. lynxjs.org "Integrating Lynx DevTool"(iOS)의 Podfile과 같은 구성이다.
+- **심볼**: `HIDE_SYMBOLS`와 `EXPORT_SYMBOLS_FOR_DEVTOOL=0` 패치를 끈다 — LynxDevtool이
+  Lynx의 `LYNX_EXPORT_FOR_DEVTOOL` 심볼과 inspector 훅을 프레임워크 경계 너머로 링크한다.
+  그래서 기본 8개 프레임워크도 **릴리스판과 다른 바이너리**다. 섞어 쓰지 않는다.
+- **격리**: `devtool/Podfile`이 루트 Podfile을 `LYNX_DEVTOOL=1`로 `eval`하고, 앵커 프로젝트 사본·
+  `Pods/`·워크스페이스·`Podfile.lock`은 `devtool/`에 생긴다(앵커 사본·Pods·워크스페이스는 git-ignored,
+  `devtool/Podfile.lock`은 커밋). 산출물은 `Results-devtool/`, `build-devtool/`, `dist-devtool/`.
+  루트 `Podfile.lock`·`Package.swift`·`Results/`는 건드리지 않는다. 기본은 서명하지 않는다
+  (`SIGN_IDENTITY=…`로 켠다).
+
+Lynx 버전은 루트 Podfile의 `pod 'Lynx', '<버전>'` 줄 하나에서 읽는다(`LYNX_VERSION`) — devtool pod이
+같은 버전을 따라간다. 스크립트는 `devtool/Podfile.lock`의 Lynx 버전이 루트와 다르면 `pod update`,
+같으면 `pod install`을 돈다. 끝에 네 프레임워크와 `LynxDebugResources.bundle`(LogBox·스위치 페이지)
+존재, Lynx export 심볼 중 devtool 관련 개수를 찍는다.
+
+배포는 릴리스 워크플로 밖이다. `MANIFEST_REPO=<owner/repo>`를 주면 `dist-devtool/`에 zip 12개와
+`Lynx` + `LynxDevtool` 두 제품을 선언한 `Package.swift`가 생긴다(태그 `<Lynx 버전>-devtool`, 예
+`4.2.0-devtool`). 별도 브랜치에서 그 파일을 루트 `Package.swift`로 복사·커밋하고 태그를 붙인 뒤 zip을
+Release 자산으로 올린다. 소비 측은 `exact: "4.2.0-devtool"`로 받아 DEV 구성에만 `LynxDevtool` 제품을
+링크하고, 앱에서 `LynxEnv.prepareDevToolForDevelopmentBeforeInit()` → `LynxEnv.sharedInstance()` →
+`devtoolEnabled = true`(+`logBoxEnabled`)를 켠다. 프로덕션에는 넣지 않는다(패키지 크기, 디버그 포트).
+`LynxDevtool/LynxRecorder`와 Lynx `-dev` 배포판(Trace/Recorder)은 범위 밖이다.
 
 ## Distribution (GitHub Actions)
 

@@ -15,14 +15,19 @@
 #   REUSE_ARCHIVE=1 ./build.sh    # 기존 build/*.xcarchive 재사용 (xcframework만 다시 만듦)
 #   SLIM_HEADERS=0 ./build.sh     # PrivateHeaders 유지 (기본은 제거 — 배포 크기 약 22% 감소)
 #
+# 다른 플레이버가 같은 파이프라인을 타게 하는 덮어쓰기(scripts/build-devtool.sh가 쓴다):
+#   WORKSPACE=devtool/Lynx-XcFramework.xcworkspace   # 아카이브할 워크스페이스 (저장소 루트 기준)
+#   BUILD_DIR=./build-devtool OUTPUT_DIR=./Results-devtool
+#   EXTRA_FRAMEWORKS="LynxDevtool BaseDevtool …"      # 기본 8개에 더해 추출할 프레임워크
+#
 set -euo pipefail
 cd "$(dirname "$0")"
 
-WORKSPACE="Lynx-XcFramework.xcworkspace"
+WORKSPACE="${WORKSPACE:-Lynx-XcFramework.xcworkspace}"
 SCHEME="Lynx-XcFramework"
 CONFIGURATION="Release"
-OUTPUT_DIR="./Results"
-BUILD_DIR="./build"
+OUTPUT_DIR="${OUTPUT_DIR:-./Results}"
+BUILD_DIR="${BUILD_DIR:-./build}"
 
 # 추출 대상 — 소비 측이 링크하는 8개. scripts/make-manifest.sh의 FRAMEWORKS와 같아야 한다.
 #
@@ -41,6 +46,11 @@ FRAMEWORKS=(
   libwebp
 )
 
+# 플레이버가 더하는 프레임워크 (공백 구분). 기본 빌드에서는 비어 있다.
+if [[ -n "${EXTRA_FRAMEWORKS:-}" ]]; then
+  read -r -a EXTRA_FRAMEWORKS_ARRAY <<< "${EXTRA_FRAMEWORKS}"
+  FRAMEWORKS+=("${EXTRA_FRAMEWORKS_ARRAY[@]}")
+fi
 PLATFORMS="${PLATFORMS:-both}"      # both | device | sim
 SIGN_IDENTITY="${SIGN_IDENTITY-TFLQDNW4Z9}"  # 빈 값이면 서명하지 않는다
 # dSYM을 xcframework에 넣으면 실기기 크래시 심볼리케이션이 되지만 산출물이 ~860MB로 커진다.
@@ -57,6 +67,8 @@ SLIM_HEADERS="${SLIM_HEADERS:-1}"
 
 DEVICE_ARCHIVE="${BUILD_DIR}/ios_device.xcarchive"
 SIM_ARCHIVE="${BUILD_DIR}/ios_sim.xcarchive"
+
+[[ -d "${WORKSPACE}" ]] || { echo "✗ 워크스페이스가 없습니다: ${WORKSPACE} — 먼저 pod install을 실행하세요" >&2; exit 1; }
 
 # 프레임워크만 뽑을 것이므로 서명은 아카이브 단계에서 생략하고, 완성된 xcframework에만 서명한다.
 archive() {

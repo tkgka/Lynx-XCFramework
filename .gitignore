@@ -13,3 +13,13 @@ dist/
 # Xcode / macOS
 xcuserdata/
 .DS_Store
+
+# devtool 플레이버 (scripts/build-devtool.sh) — 작업 디렉토리의 앵커 사본·Pods·워크스페이스와 산출물.
+# devtool/Podfile과 devtool/Podfile.lock은 커밋한다 (릴리스의 Podfile.lock과 같은 이유).
+devtool/Pods/
+devtool/Lynx-XcFramework.xcodeproj/
+devtool/Lynx-XcFramework.xcworkspace/
+devtool/Lynx-XcFramework/
+build-devtool/
+Results-devtool/
+dist-devtool/

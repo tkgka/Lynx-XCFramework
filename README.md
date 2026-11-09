@@ -26,6 +26,21 @@ import LynxService
 
 iOS 12.0+, device(arm64) + simulator(arm64/x86_64) 슬라이스 포함.
 
+## devtool 플레이버 (로컬)
+
+[Lynx DevTool](https://github.com/lynx-family/lynx-devtool) 데스크톱에 연결되는 배포판은
+릴리스와 별도로 만든다. `LynxDevtool` / `BaseDevtool` / `DebugRouter` / `SocketRocket`이
+더해지고 Lynx의 devtool 심볼 축소가 꺼지므로, 기본 8개도 릴리스판과 다른 바이너리다.
+
+```zsh
+scripts/build-devtool.sh                              # → Results-devtool/ (12개, 서명 없음)
+MANIFEST_REPO=<owner/repo> scripts/build-devtool.sh   # + dist-devtool/{*.zip, Package.swift}
+```
+
+생성되는 `Package.swift`는 `Lynx`와 `LynxDevtool` 두 제품을 선언하고 태그 `<Lynx 버전>-devtool`
+(예 `4.2.0-devtool`)의 Release 자산을 가리킨다. 디버그 빌드에만 `LynxDevtool` 제품을 링크한다.
+상세는 [`docs/EXTRACTION.md`](docs/EXTRACTION.md) §6.
+
 ## 버전 업데이트 (GitHub Actions)
 
 1. **Bump Lynx Version (PR)** 워크플로를 수동 실행 — 최신(또는 지정) Lynx 버전으로
@@ -50,7 +65,8 @@ pod install    # 최초 1회
   (릴리스 워크플로가 재생성 — 직접 수정 금지)
 - `Podfile` — Lynx 버전 고정 (릴리스 버전의 단일 소스 — 나머지 pod는 podspec 제약으로 해석)
 - `build.sh` — 아카이브 → create-xcframework → codesign 자동화
-- `scripts/` — 버전 조회 / Podfile 갱신 / zip·checksum·매니페스트 생성
+- `scripts/` — 버전 조회 / Podfile 갱신 / zip·checksum·매니페스트 생성 / devtool 플레이버 빌드
+- `devtool/` — devtool 플레이버의 Podfile(루트 Podfile을 `LYNX_DEVTOOL=1`로 평가)과 Podfile.lock
 - `.github/workflows/` — 버전 업 PR(수동) · 빌드/릴리스(머지 시 자동)
 - `Lynx-XCFramework/` — 추출 앵커 타깃 소스 (Anchor.swift 하나 — 산출물은 배포 대상 아님)
 - `Results/`, `dist/` — 추출/패키징 산출물 (git-ignored)
