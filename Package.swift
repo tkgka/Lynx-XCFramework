@@ -26,43 +26,43 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "Lynx",
-            url: "https://github.com/xenonClient/Lynx-XCFramework/releases/download/4.2.0/Lynx.xcframework.zip",
-            checksum: "1044630f67157ef23acf45fc68da9fd49aba86bf7b7ece65d7f48ad9096bc9ca"
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0/Lynx.xcframework.zip",
+            checksum: "bbb9d3d17096d51db3513c1dd4c51ccc34982995ca6a3f3f3d12c891eae49ea5"
         ),
         .binaryTarget(
             name: "LynxBase",
-            url: "https://github.com/xenonClient/Lynx-XCFramework/releases/download/4.2.0/LynxBase.xcframework.zip",
-            checksum: "8d5ad22358cfdf29c86479e80cef4965298ae344a22ad79330243a2da7054d9b"
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0/LynxBase.xcframework.zip",
+            checksum: "325745ef5aa6aa2fe9045ac78dbd1b38d03753d612a79e390dbe3ef3d51b290e"
         ),
         .binaryTarget(
             name: "LynxService",
-            url: "https://github.com/xenonClient/Lynx-XCFramework/releases/download/4.2.0/LynxService.xcframework.zip",
-            checksum: "dfa8b82abe06a632ab5d7892ad3acbaeb0daf46ea161c218d7218093532fe22a"
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0/LynxService.xcframework.zip",
+            checksum: "aba37f182d3cc0ae75e9d1cde0b8afdc83e0ae3b0867e8a8218e6daa465c0a45"
         ),
         .binaryTarget(
             name: "LynxServiceAPI",
-            url: "https://github.com/xenonClient/Lynx-XCFramework/releases/download/4.2.0/LynxServiceAPI.xcframework.zip",
-            checksum: "f2615f9f0ff1ce191c28da35739c21ba77b527949b63d16463a999f184cf81e2"
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0/LynxServiceAPI.xcframework.zip",
+            checksum: "dc0e02a9a11d4cdc3020a863c3a8705c7e7c4adbdbc5b3b86510a5a428206c6c"
         ),
         .binaryTarget(
             name: "PrimJS",
-            url: "https://github.com/xenonClient/Lynx-XCFramework/releases/download/4.2.0/PrimJS.xcframework.zip",
-            checksum: "b27b663f356b8914208537b829ed3d63f6cefa399e0387c2c7ba32e4a95e9f4b"
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0/PrimJS.xcframework.zip",
+            checksum: "0868a7b6343b8ee0acd9118fc86ddd7912c95ffe998acc5a5c51127b0ab1f82b"
         ),
         .binaryTarget(
             name: "SDWebImage",
-            url: "https://github.com/xenonClient/Lynx-XCFramework/releases/download/4.2.0/SDWebImage.xcframework.zip",
-            checksum: "2e46c0851ae4592a5018b94a0079d0540996ca75897ffbd42fed6c56132c8b7b"
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0/SDWebImage.xcframework.zip",
+            checksum: "992b026aeee8ff24c29ff0bad70b31c447f6ef5bc1b5b8d55da75a0bbd8302a3"
         ),
         .binaryTarget(
             name: "SDWebImageWebPCoder",
-            url: "https://github.com/xenonClient/Lynx-XCFramework/releases/download/4.2.0/SDWebImageWebPCoder.xcframework.zip",
-            checksum: "49af29505abd4e95a34a5b3efe0d28ccdcaea0504ef596a8283399d8459539c5"
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0/SDWebImageWebPCoder.xcframework.zip",
+            checksum: "cc9a24b8526df7d76d59da818d9d430063293056bd11865d2db80ac5b939a0d9"
         ),
         .binaryTarget(
             name: "libwebp",
-            url: "https://github.com/xenonClient/Lynx-XCFramework/releases/download/4.2.0/libwebp.xcframework.zip",
-            checksum: "d5f6214501f71a51cec960f9cf0d80f97ee053bdbaf1f9a7baad777b5dfcebf3"
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0/libwebp.xcframework.zip",
+            checksum: "c3fc38f67e0b835f4f49d6a52f098641f6156ad394473104bc6a3a07b15ec63c"
         ),
     ]
 )
