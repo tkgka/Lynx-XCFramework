@@ -1,7 +1,7 @@
 // swift-tools-version: 5.9
 //
 // ⚠️ scripts/make-manifest.sh가 생성하는 파일 — 직접 수정하지 말 것.
-// 바이너리는 GitHub Release(4.2.0) 자산을 가리킨다.
+// 바이너리는 GitHub Release(4.2.0-devtool) 자산을 가리킨다.
 import PackageDescription
 
 let package = Package(
@@ -22,47 +22,79 @@ let package = Package(
                 "libwebp",
             ]
         )
+        ,
+        // devtool 플레이버 전용 — Lynx DevTool 데스크톱 연결에 필요한 프레임워크.
+        // Lynx 제품과 함께 링크하고, 프로덕션 구성에서는 링크하지 않는다.
+        .library(
+            name: "LynxDevtool",
+            targets: [
+                "LynxDevtool",
+                "BaseDevtool",
+                "DebugRouter",
+                "SocketRocket",
+            ]
+        )
     ],
     targets: [
         .binaryTarget(
             name: "Lynx",
-            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0/Lynx.xcframework.zip",
-            checksum: "bbb9d3d17096d51db3513c1dd4c51ccc34982995ca6a3f3f3d12c891eae49ea5"
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0-devtool/Lynx.xcframework.zip",
+            checksum: "b722a7ea9fa230d9a906569fbf955742b554ca5a8f253b3dd169aa2f88d89fb9"
         ),
         .binaryTarget(
             name: "LynxBase",
-            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0/LynxBase.xcframework.zip",
-            checksum: "325745ef5aa6aa2fe9045ac78dbd1b38d03753d612a79e390dbe3ef3d51b290e"
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0-devtool/LynxBase.xcframework.zip",
+            checksum: "669b26d5d8339a15d45d798b6902dabd6f9ea1be2f02d1b920dfd0eba29afc1e"
         ),
         .binaryTarget(
             name: "LynxService",
-            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0/LynxService.xcframework.zip",
-            checksum: "aba37f182d3cc0ae75e9d1cde0b8afdc83e0ae3b0867e8a8218e6daa465c0a45"
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0-devtool/LynxService.xcframework.zip",
+            checksum: "7eba564822dee36c00f297a6b69e3b01efaab04755ac3380c18956f06c20ca9b"
         ),
         .binaryTarget(
             name: "LynxServiceAPI",
-            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0/LynxServiceAPI.xcframework.zip",
-            checksum: "dc0e02a9a11d4cdc3020a863c3a8705c7e7c4adbdbc5b3b86510a5a428206c6c"
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0-devtool/LynxServiceAPI.xcframework.zip",
+            checksum: "72740cb4ee4d2e8a2933994cedaf2103f244775da48b25eff52c2dacc7d7c88f"
         ),
         .binaryTarget(
             name: "PrimJS",
-            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0/PrimJS.xcframework.zip",
-            checksum: "0868a7b6343b8ee0acd9118fc86ddd7912c95ffe998acc5a5c51127b0ab1f82b"
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0-devtool/PrimJS.xcframework.zip",
+            checksum: "a5a128c6034febad76b85246843c9fa5ca846191f58e2c3cca2c9ec3e83033bb"
         ),
         .binaryTarget(
             name: "SDWebImage",
-            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0/SDWebImage.xcframework.zip",
-            checksum: "992b026aeee8ff24c29ff0bad70b31c447f6ef5bc1b5b8d55da75a0bbd8302a3"
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0-devtool/SDWebImage.xcframework.zip",
+            checksum: "5936f8e62099747f72e87837a30c2aa934d5ce9605f564d0353287bb508a2406"
         ),
         .binaryTarget(
             name: "SDWebImageWebPCoder",
-            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0/SDWebImageWebPCoder.xcframework.zip",
-            checksum: "cc9a24b8526df7d76d59da818d9d430063293056bd11865d2db80ac5b939a0d9"
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0-devtool/SDWebImageWebPCoder.xcframework.zip",
+            checksum: "5abce8db4919805c7bd792560fa7dde38cad0affe007ccf8d1e4e0e74926b2e9"
         ),
         .binaryTarget(
             name: "libwebp",
-            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0/libwebp.xcframework.zip",
-            checksum: "c3fc38f67e0b835f4f49d6a52f098641f6156ad394473104bc6a3a07b15ec63c"
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0-devtool/libwebp.xcframework.zip",
+            checksum: "9329db7b1a3553c0a4713299e6a94d64a8ab15d9adcaae5a6c4b31dd17e8186d"
+        ),
+        .binaryTarget(
+            name: "LynxDevtool",
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0-devtool/LynxDevtool.xcframework.zip",
+            checksum: "fe89d590c2ff09a4b51dd5e747ce247444e4b5cb7c44ff7bd99fb55a4636c170"
+        ),
+        .binaryTarget(
+            name: "BaseDevtool",
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0-devtool/BaseDevtool.xcframework.zip",
+            checksum: "57333a921db473c9744d24e74ee37bde64a33c1a2e2c5d4be96c8462e4f4084d"
+        ),
+        .binaryTarget(
+            name: "DebugRouter",
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0-devtool/DebugRouter.xcframework.zip",
+            checksum: "844d73c8a6657a881f5985c12b8beb1cdb885df0ac749ca8cad376bb68d13025"
+        ),
+        .binaryTarget(
+            name: "SocketRocket",
+            url: "https://github.com/tkgka/Lynx-XCFramework/releases/download/4.2.0-devtool/SocketRocket.xcframework.zip",
+            checksum: "8ab9ee0d18365b893bc829d9e9bdf2b16a4ead831f0718fe2fe396a80c1fc36a"
         ),
     ]
 )
